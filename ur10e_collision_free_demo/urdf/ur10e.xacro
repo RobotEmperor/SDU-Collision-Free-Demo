@@ -1,0 +1,386 @@
+<?xml version="1.0"?>
+
+<robot name="ur10e_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find ur10e_collision_free_demo)/urdf/ur.gazebo" />
+
+  <xacro:property name="pi" value="3.14159"/>
+
+    <!-- These parameters are borrowed from the urcontrol.conf file
+        but are not verified for the correct permutation.
+        The permutation was guessed by looking at the ur5e parameters.
+        Serious use of these parameters needs further inspection. -->
+  <xacro:property name="shoulder_cog" value="0.00008 0.00244 -0.037" />
+  <xacro:property name="upper_arm_cog" value="0.00001 0.15061 0.38757" />
+  <xacro:property name="forearm_cog" value="-0.00012 0.06112 0.1984" />
+  <xacro:property name="wrist_1_cog" value="-0.00021 -0.00112 0.02269" />
+  <xacro:property name="wrist_2_cog" value="-0.00021 0.00112 0.002269" />
+  <xacro:property name="wrist_3_cog" value="0 -0.001156 -0.00149" />
+
+    <!-- Kinematic model -->
+    <!-- Properties from urcontrol.conf -->
+  <xacro:property name="d1" value="0.1807" />
+  <xacro:property name="a2" value="-0.6127" />
+  <xacro:property name="a3" value="-0.57155" />
+  <xacro:property name="d4" value="0.135" />
+  <xacro:property name="d5" value="0.11985" />
+  <xacro:property name="d6" value="0.11655" />
+
+    <!-- Arbitrary offsets for shoulder/elbow joints -->
+  <xacro:property name="shoulder_offset" value="0.176" />
+  <xacro:property name="elbow_offset" value="-0.137" />
+
+    <!-- link lengths used in model -->
+  <xacro:property name="shoulder_height" value="${d1}" />
+  <xacro:property name="upper_arm_length" value="${-a2}" />
+  <xacro:property name="forearm_length" value="${-a3}" />
+  <xacro:property name="wrist_1_length" value="${d4}" />
+  <xacro:property name="wrist_2_length" value="${d5}" />
+  <xacro:property name="wrist_3_length" value="${d6}" />
+
+  <xacro:macro name="ur10e_robot" params="prefix ">
+
+    <link name="${prefix}base_link">
+      <visual>
+        <geometry>
+          <mesh filename="package://ur10e_collision_free_demo/meshes/ur10e/visual/base.dae"/>
+        </geometry>
+        <material name="LightGrey">
+          <color rgba="0.7 0.7 0.7 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <geometry>
+          <mesh filename="package://ur10e_collision_free_demo/meshes/ur10e/collision/base.stl"/>
+        </geometry>
+      </collision>
+
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>      
+      <mass value="0.1"/>
+      <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0" />      
+    </inertial>
+    </link>
+
+    <joint name="${prefix}shoulder_pan_joint" type="revolute">
+      <parent link="${prefix}base_link" />
+      <child link = "${prefix}shoulder_link" />
+      <origin xyz="0.0 0.0 ${shoulder_height}" rpy="0.0 0.0 0.0" />
+      <axis xyz="0 0 1" />
+      <limit velocity="6.5" effort="1000" lower="${-2*pi}" upper="${2*pi}" />
+      <dynamics damping="1" friction="0.0"/>
+    </joint>
+
+    <link name="${prefix}shoulder_link">
+      <visual>
+        <geometry>
+          <mesh filename="package://ur10e_collision_free_demo/meshes/ur10e/visual/shoulder.dae"/>
+        </geometry>
+        <material name="LightGrey">
+          <color rgba="0.7 0.7 0.7 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <geometry>
+          <mesh filename="package://ur10e_collision_free_demo/meshes/ur10e/collision/shoulder.stl"/>
+        </geometry>
+      </collision>
+       <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>      
+      <mass value="0.1"/>
+      <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0" />      
+    </inertial>
+    </link>
+
+    <joint name="${prefix}shoulder_lift_joint" type="revolute">
+      <parent link="${prefix}shoulder_link" />
+      <child link = "${prefix}upper_arm_link" />
+      <origin xyz="0.0 ${shoulder_offset} 0.0" rpy="0.0 ${pi / 2.0} 0.0" />
+      <axis xyz="0 1 0" />
+      <limit velocity="6.5" effort="1000" lower="${-2*pi}" upper="${2*pi}" />
+      <dynamics damping="1" friction="0.0"/>
+    </joint>
+
+    <link name="${prefix}upper_arm_link">
+      <visual>
+        <geometry>
+          <mesh filename="package://ur10e_collision_free_demo/meshes/ur10e/visual/upperarm.dae"/>
+        </geometry>
+        <material name="LightGrey">
+          <color rgba="0.7 0.7 0.7 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <geometry>
+          <mesh filename="package://ur10e_collision_free_demo/meshes/ur10e/collision/upperarm.stl"/>
+        </geometry>
+      </collision>
+      <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>      
+      <mass value="0.1"/>
+      <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0" />      
+    </inertial>
+    </link>
+
+    <joint name="${prefix}elbow_joint" type="revolute">
+      <parent link="${prefix}upper_arm_link" />
+      <child link = "${prefix}forearm_link" />
+      <origin xyz="0.0 ${elbow_offset} ${upper_arm_length}" rpy="0.0 0.0 0.0" />
+      <axis xyz="0 1 0" />
+     <limit velocity="6.5" effort="1000" lower="${-2*pi}" upper="${2*pi}" />
+      <dynamics damping="1" friction="0.0"/>
+    </joint>
+
+    <link name="${prefix}forearm_link">
+      <visual>
+         <geometry>
+          <mesh filename="package://ur10e_collision_free_demo/meshes/ur10e/visual/forearm.dae"/>
+        </geometry>
+        <material name="LightGrey">
+          <color rgba="0.7 0.7 0.7 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <geometry>
+          <mesh filename="package://ur10e_collision_free_demo/meshes/ur10e/collision/forearm.stl"/>
+        </geometry>
+      </collision>
+      <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>      
+      <mass value="0.1"/>
+      <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0" />      
+    </inertial>
+    </link>
+
+    <joint name="${prefix}wrist_1_joint" type="revolute">
+      <parent link="${prefix}forearm_link" />
+      <child link = "${prefix}wrist_1_link" />
+      <origin xyz="0.0 0.0 ${forearm_length}" rpy="0.0 ${pi / 2.0} 0.0" />
+      <axis xyz="0 1 0" />
+     <limit velocity="6.5" effort="1000" lower="${-4*pi}" upper="${4*pi}" />
+      <dynamics damping="1" friction="0.0"/>
+    </joint>
+
+    <link name="${prefix}wrist_1_link">
+      <visual>
+        <geometry>
+          <mesh filename="package://ur10e_collision_free_demo/meshes/ur10e/visual/wrist1.dae"/>
+        </geometry>
+        <material name="LightGrey">
+          <color rgba="0.7 0.7 0.7 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <geometry>
+          <mesh filename="package://ur10e_collision_free_demo/meshes/ur10e/collision/wrist1.stl"/>
+        </geometry>
+      </collision>
+      <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>      
+      <mass value="0.1"/>
+      <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0" />      
+    </inertial>
+    </link>
+
+    <joint name="${prefix}wrist_2_joint" type="revolute">
+      <parent link="${prefix}wrist_1_link" />
+      <child link = "${prefix}wrist_2_link" />
+      <origin xyz="0.0 ${wrist_1_length} 0.0" rpy="0.0 0.0 0.0" />
+      <axis xyz="0 0 1" />
+      <limit velocity="6.5" effort="1000" lower="${-4*pi}" upper="${4*pi}" />
+      <dynamics damping="1" friction="0.0"/>
+    </joint>'
+
+    <link name="${prefix}wrist_2_link">
+      <visual>
+        <geometry>
+          <mesh filename="package://ur10e_collision_free_demo/meshes/ur10e/visual/wrist2.dae"/>
+        </geometry>
+        <material name="LightGrey">
+          <color rgba="0.7 0.7 0.7 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <geometry>
+          <mesh filename="package://ur10e_collision_free_demo/meshes/ur10e/collision/wrist2.stl"/>
+        </geometry>
+      </collision>
+      <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>      
+      <mass value="0.1"/>
+      <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0" />      
+    </inertial>
+    </link>
+
+    <joint name="${prefix}wrist_3_joint" type="revolute">
+      <parent link="${prefix}wrist_2_link" />
+      <child link = "${prefix}wrist_3_link" />
+      <origin xyz="0.0 0.0 ${wrist_2_length}" rpy="0.0 0.0 0.0" />
+      <axis xyz="0 1 0" />
+      <limit velocity="6.5" effort="1000" lower="${-4*pi}" upper="${4*pi}" />
+      <dynamics damping="1" friction="0.0"/>
+    </joint>
+
+    <link name="${prefix}wrist_3_link">
+      <visual>
+        <geometry>
+          <mesh filename="package://ur10e_collision_free_demo/meshes/ur10e/visual/wrist3.dae"/>
+        </geometry>
+        <material name="LightGrey">
+          <color rgba="0.7 0.7 0.7 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <geometry>
+          <mesh filename="package://ur10e_collision_free_demo/meshes/ur10e/collision/wrist3.stl"/>
+        </geometry>
+      </collision>
+      <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>      
+      <mass value="0.1"/>
+      <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0" />      
+    </inertial>
+    </link>
+
+    <joint name="${prefix}wrist_3_link-tool0_fixed_joint" type="fixed">
+      <origin xyz="0 ${wrist_3_length+0.082} 0" rpy="${pi/-2.0} 0 0"/>
+      <parent link="${prefix}wrist_3_link"/>
+      <child link="${prefix}tool0"/>
+    </joint>
+
+    <link name="${prefix}tool0">
+     <visual>
+        <geometry>
+          <box size="0.007 0.007 0.165"/>
+        </geometry>
+        <material name="orange">
+          <color rgba="${255/255} ${108/255} ${10/255} 1.0"/>
+        </material>
+     </visual>
+
+    </link>
+
+    <joint name="${prefix}gripper_joint" type="fixed">
+      <origin xyz="0 0 0.0825" rpy="0 ${pi/2.0} 0"/>
+      <parent link="${prefix}tool0"/>
+      <child link="${prefix}tool1"/>
+    </joint>
+
+
+
+    <link name="${prefix}tool1">
+     <visual>
+        <geometry>
+          <box size="0.001 0.001 0.02"/>
+        </geometry>
+        <material name="orange">
+          <color rgba="${255/255} ${108/255} ${10/255} 1.0"/>
+        </material>
+     </visual>
+
+    </link>
+
+    <joint name="${prefix}tool_finger_1" type="fixed">
+      <origin xyz="0 0 -0.034" rpy="0 -${pi/2.0} 0"/>
+      <parent link="${prefix}tool1"/>
+      <child link="${prefix}finger_1"/>
+    </joint>
+
+    <link name="${prefix}finger_1">
+     <visual>
+        <geometry>
+          <mesh filename="package://ur10e_collision_free_demo/meshes/ur10e/visual/Belt_finger_New.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+        <material name="orange">
+          <color rgba="${255/255} ${108/255} ${10/255} 1.0"/>
+        </material>
+     </visual>
+
+    </link>
+
+    <joint name="${prefix}tool_finger_2" type="fixed">
+      <origin xyz="0 0 0.034" rpy="0 ${pi/2} ${pi}"/>
+      <parent link="${prefix}tool1"/>
+      <child link="${prefix}finger_2"/>
+    </joint>
+
+    <link name="${prefix}finger_2">
+     <visual>
+        <geometry>
+          <mesh filename="package://ur10e_collision_free_demo/meshes/ur10e/visual/Belt_finger_New.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+        <material name="orange">
+          <color rgba="${255/255} ${108/255} ${10/255} 1.0"/>
+        </material>
+     </visual>
+
+    </link>
+
+    <transmission name="${prefix}shoulder_pan_trans">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="${prefix}shoulder_pan_joint">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="${prefix}shoulder_pan_motor">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+
+    <transmission name="${prefix}shoulder_lift_trans">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="${prefix}shoulder_lift_joint">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="${prefix}shoulder_lift_motor">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+
+    <transmission name="${prefix}elbow_trans">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="${prefix}elbow_joint">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="${prefix}elbow_motor">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+
+    <transmission name="${prefix}wrist_1_trans">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="${prefix}wrist_1_joint">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="${prefix}wrist_1_motor">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+
+    <transmission name="${prefix}wrist_2_trans">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="${prefix}wrist_2_joint">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="${prefix}wrist_2_motor">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+
+    <transmission name="${prefix}wrist_3_trans">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="${prefix}wrist_3_joint">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="${prefix}wrist_3_motor">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+   </xacro:macro>
+</robot>
+

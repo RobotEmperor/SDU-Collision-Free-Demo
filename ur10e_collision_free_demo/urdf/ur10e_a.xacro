@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro"
+       name="ur10e_a" >
+ 
+
+  <!-- ur3 -->
+  <xacro:include filename="$(find ur10e_collision_free_demo)/urdf/ur10e.xacro" />
+ 
+  <!--right arm, the prefix setting: r_ -->
+  <xacro:ur10e_robot prefix="a_" />
+ 
+  <link name="a_world" />
+ 
+  <joint name="a_world_joint" type="fixed">
+    <parent link="a_world" />
+    <child link = "a_base_link" />  <!--"r_base_link" is follow the prefix setting.-->
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+  </joint>
+ 
+</robot>

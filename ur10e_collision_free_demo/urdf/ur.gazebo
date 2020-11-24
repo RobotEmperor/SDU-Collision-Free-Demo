@@ -1,0 +1,120 @@
+<?xml version="1.0"?>
+<robot>
+
+
+  <gazebo>
+    <plugin name="ros_control" filename="libgazebo_ros_control.so">
+      <robotNamespace>/ur10e_robot</robotNamespace>
+      <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+    </plugin>
+  </gazebo>
+
+
+
+<!--
+    <plugin name="gazebo_ros_power_monitor_controller" filename="libgazebo_ros_power_monitor.so">
+      <alwaysOn>true</alwaysOn>
+      <updateRate>1.0</updateRate>
+      <timeout>5</timeout>
+      <powerStateTopic>power_state</powerStateTopic>
+      <powerStateRate>10.0</powerStateRate>
+      <fullChargeCapacity>87.78</fullChargeCapacity>     
+      <dischargeRate>-474</dischargeRate>
+      <chargeRate>525</chargeRate>
+      <dischargeVoltage>15.52</dischargeVoltage>
+      <chargeVoltage>16.41</chargeVoltage>
+    </plugin>
+  </gazebo>
+
+  <gazebo reference="imu_link">
+    <gravity>true</gravity>
+    <sensor name="imu_sensor" type="imu">
+      <always_on>true</always_on>
+      <update_rate>500</update_rate>
+      <visualize>true</visualize>
+      <topic>__default_topic__</topic>
+      <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
+        <topicName>imu</topicName>
+        <bodyName>imu_link</bodyName>
+        <updateRateHZ>10.0</updateRateHZ>
+        <gaussianNoise>0.0</gaussianNoise>
+        <xyzOffset>0 0 0</xyzOffset>
+        <rpyOffset>0 0 0</rpyOffset>
+        <frameName>imu_link</frameName>
+        <initialOrientationAsReference>false</initialOrientationAsReference>
+      </plugin>
+      <pose>0 0 0 0 0 0</pose>
+    </sensor>
+  </gazebo>
+
+-->
+<!--
+  <gazebo>
+    <plugin name="ft_sensor" filename="libgazebo_ros_ft_sensor.so">
+        <updateRate>100.0</updateRate>
+        <topicName>ft_sensor_topic</topicName>
+        <jointName>ee_fixed_joint</jointName>
+    </plugin>
+  </gazebo>
+
+-->
+  <gazebo reference="plate_link">
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <material>Gazebo/Grey</material>
+  </gazebo>
+
+    <gazebo reference="shoulder_link">
+      <!--<selfCollide>true</selfCollide>-->
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    </gazebo>
+
+    <gazebo reference="upper_arm_link">
+
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    </gazebo>
+    <gazebo reference="forearm_link">
+
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    </gazebo>
+    <gazebo reference="wrist_1_link">
+
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    </gazebo>
+    <gazebo reference="wrist_3_link">
+   
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    </gazebo>
+    <gazebo reference="wrist_2_link">
+
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    </gazebo>
+    <gazebo reference="ee_link">
+
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    </gazebo>
+
+    <gazebo reference="tool0">
+      <material>Gazebo/Orange</material>
+    </gazebo>
+
+      <gazebo reference="finger_1">
+       <material>Gazebo/Grey</material>
+    </gazebo>
+
+      <gazebo reference="finger_2">
+       <material>Gazebo/Grey</material>
+    </gazebo>
+
+    <gazebo reference="task_model_base">
+      <material>Gazebo/Grey</material>
+    </gazebo>
+
+</robot>
