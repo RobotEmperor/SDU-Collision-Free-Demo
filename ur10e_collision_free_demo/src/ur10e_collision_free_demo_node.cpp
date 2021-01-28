@@ -7,25 +7,21 @@
 
 #include <ur10e_collision_free_demo/ur10e_collision_free_demo.h>
 
-using namespace ur10e_collision_free_demo;
+using namespace online_planning_test;
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "ur10e_collision_free_demo");
+  ros::init(argc, argv, "online_planning_test");
   ros::NodeHandle pnh("~");
   ros::NodeHandle nh;
 
   bool plotting = true;
   bool rviz = true;
-  int steps = 12;
-  double box_size = 0.002;
 
   // Get ROS Parameters
   pnh.param("plotting", plotting, plotting);
   pnh.param("rviz", rviz, rviz);
-  pnh.param<int>("steps", steps, steps);
-  pnh.param<double>("box_size", box_size, box_size);
 
-  OnlinePlanningExample example(nh, plotting, rviz, steps, box_size);
+  PickAndPlaceExample example(nh, plotting, rviz);
   example.run();
 }

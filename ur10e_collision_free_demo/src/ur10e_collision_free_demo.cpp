@@ -7,275 +7,363 @@
 
 #include <tesseract_common/macros.h>
 TESSERACT_COMMON_IGNORE_WARNINGS_PUSH
+#include <jsoncpp/json/json.h>
 #include <ros/ros.h>
-
-#include <trajopt_sqp/trust_region_sqp_solver.h>
-#include <trajopt_sqp/osqp_eigen_solver.h>
-#include <trajopt_sqp/types.h>
-
-#include <trajopt_ifopt/constraints/cartesian_position_constraint.h>
-#include <trajopt_ifopt/constraints/joint_position_constraint.h>
-#include <trajopt_ifopt/constraints/joint_velocity_constraint.h>
-#include <trajopt_ifopt/constraints/collision_constraint.h>
-#include <trajopt_ifopt/constraints/inverse_kinematics_constraint.h>
-#include <trajopt_ifopt/variable_sets/joint_position_variable.h>
-#include <trajopt_ifopt/costs/squared_cost.h>
-#include <trajopt_ifopt/utils/ifopt_utils.h>
 TESSERACT_COMMON_IGNORE_WARNINGS_POP
 
 #include <ur10e_collision_free_demo/ur10e_collision_free_demo.h>
 
-using namespace trajopt;
-using namespace tesseract;
+#include <tesseract_rosutils/plotting.h>
+#include <tesseract_rosutils/utils.h>
+#include <tesseract_motion_planners/trajopt/profile/trajopt_default_plan_profile.h>
+#include <tesseract_motion_planners/trajopt/profile/trajopt_default_composite_profile.h>
+#include <tesseract_motion_planners/trajopt/profile/trajopt_default_solver_profile.h>
+#include <tesseract_motion_planners/core/utils.h>
+#include <tesseract_command_language/command_language.h>
+#include <tesseract_command_language/utils/utils.h>
+#include <tesseract_command_language/utils/get_instruction_utils.h>
+#include <tesseract_process_managers/taskflow_generators/trajopt_taskflow.h>
+#include <tesseract_planning_server/tesseract_planning_server.h>
+#include <tesseract_visualization/markers/toolpath_marker.h>
+
 using namespace tesseract_environment;
+using namespace tesseract_kinematics;
 using namespace tesseract_scene_graph;
 using namespace tesseract_collision;
 using namespace tesseract_rosutils;
+using namespace tesseract_visualization;
 
-const std::string ROBOT_DESCRIPTION_PARAM = "robot_description"; /**< Default ROS parameter for robot description */
-const std::string ROBOT_SEMANTIC_PARAM =
-    "robot_description_semantic"; /**< Default ROS parameter for robot description */
-const std::string DYNAMIC_OBJECT_JOINT_STATE = "/joint_states";
+/** @brief Default ROS parameter for robot description */
+const std::string ROBOT_DESCRIPTION_PARAM = "robot_description";
 
-namespace ur10e_collision_free_demo
+/** @brief Default ROS parameter for robot description */
+const std::string ROBOT_SEMANTIC_PARAM = "robot_description_semantic";
+
+/** @brief RViz Example Namespace */
+const std::string EXAMPLE_MONITOR_NAMESPACE = "tesseract_ros_examples";
+
+const double OFFSET = 0.005;
+
+const std::string LINK_BOX_NAME = "box";
+const std::string LINK_END_EFFECTOR_NAME = "iiwa_link_ee";
+
+namespace online_planning_test
 {
-OnlinePlanningExample::OnlinePlanningExample(const ros::NodeHandle& nh,
-                                             bool plotting,
-                                             bool rviz,
-                                             int steps,
-                                             double box_size)
-  : Example(plotting, rviz), nh_(nh), steps_(steps), box_size_(box_size), realtime_running_(false)
+PickAndPlaceExample::PickAndPlaceExample(const ros::NodeHandle& nh, bool plotting, bool rviz)
+  : Example(plotting, rviz), nh_(nh)
 {
-  // Import URDF/SRDF
+}
+
+Command::Ptr PickAndPlaceExample::addBox(double box_x, double box_y, double box_side)
+{
+  auto link_box = std::make_shared<Link>(LINK_BOX_NAME);
+
+  Visual::Ptr visual = std::make_shared<Visual>();
+  visual->origin = Eigen::Isometry3d::Identity();
+  visual->geometry = std::make_shared<tesseract_geometry::Box>(box_side, box_side, box_side);
+  link_box->visual.push_back(visual);
+
+  Collision::Ptr collision = std::make_shared<Collision>();
+  collision->origin = visual->origin;
+  collision->geometry = visual->geometry;
+  link_box->collision.push_back(collision);
+
+  auto joint_box = std::make_shared<Joint>("joint_box");
+  joint_box->parent_link_name = "a_base_link";
+  joint_box->child_link_name = LINK_BOX_NAME;
+  joint_box->type = JointType::FIXED;
+  joint_box->parent_to_joint_origin_transform = Eigen::Isometry3d::Identity();
+  joint_box->parent_to_joint_origin_transform.translation() += Eigen::Vector3d(box_x, box_y, (box_side / 2.0) + OFFSET);
+
+  return std::make_shared<tesseract_environment::AddCommand>(link_box, joint_box);
+}
+
+bool PickAndPlaceExample::run()
+{
+  using tesseract_planning::CartesianWaypoint;
+  using tesseract_planning::CompositeInstruction;
+  using tesseract_planning::CompositeInstructionOrder;
+  using tesseract_planning::Instruction;
+  using tesseract_planning::ManipulatorInfo;
+  using tesseract_planning::MoveInstruction;
+  using tesseract_planning::PlanInstruction;
+  using tesseract_planning::PlanInstructionType;
+  using tesseract_planning::ProcessPlanningFuture;
+  using tesseract_planning::ProcessPlanningRequest;
+  using tesseract_planning::ProcessPlanningServer;
+  using tesseract_planning::StateWaypoint;
+  using tesseract_planning::Waypoint;
+  using tesseract_planning_server::ROSProcessEnvironmentCache;
+
+  /////////////
+  /// SETUP ///
+  /////////////
+
+  console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_DEBUG);
+
+  // Pull ROS params
   std::string urdf_xml_string, srdf_xml_string;
+//  double box_side, box_x, box_y;
   nh_.getParam(ROBOT_DESCRIPTION_PARAM, urdf_xml_string);
   nh_.getParam(ROBOT_SEMANTIC_PARAM, srdf_xml_string);
+//  nh_.getParam("box_side", box_side);
+//  nh_.getParam("box_x", box_x);
+//  nh_.getParam("box_y", box_y);
 
+  // Initialize the environment
   ResourceLocator::Ptr locator = std::make_shared<tesseract_rosutils::ROSResourceLocator>();
-  if (!tesseract_->init(urdf_xml_string, srdf_xml_string, locator))
-    assert(false);
+  if (!env_->init<OFKTStateSolver>(urdf_xml_string, srdf_xml_string, locator))
+    return false;
 
-  // Set up plotting
-  plotter_ =
-      std::make_shared<tesseract_rosutils::ROSPlotting>(tesseract_->getEnvironment()->getSceneGraph()->getRoot());
+  // Create monitor
+  monitor_ = std::make_shared<tesseract_monitoring::EnvironmentMonitor>(env_, EXAMPLE_MONITOR_NAMESPACE);
+  if (rviz_)
+    monitor_->startPublishingEnvironment(tesseract_monitoring::EnvironmentMonitor::UPDATE_ENVIRONMENT);
 
-  // Extract necessary kinematic information
-  manipulator_fk_ = tesseract_->getFwdKinematicsManager()->getFwdKinematicSolver("manipulator");
-  manipulator_adjacency_map_ = std::make_shared<tesseract_environment::AdjacencyMap>(
-      tesseract_->getEnvironment()->getSceneGraph(),
-      manipulator_fk_->getActiveLinkNames(),
-      tesseract_->getEnvironment()->getCurrentState()->link_transforms);
-  manipulator_ik_ = tesseract_->getInvKinematicsManager()->getInvKinematicSolver("manipulator");
+  // Set default contact distance
+  Command::Ptr cmd_default_dist = std::make_shared<tesseract_environment::ChangeDefaultContactMarginCommand>(0.005);
+  if (!monitor_->applyCommand(*cmd_default_dist))
+    return false;
 
-  // Initialize the trajectory
-  current_trajectory_ = trajopt::TrajArray::Zero(steps_, 14);
-  joint_names_ = { "a_shoulder_pan_joint", "a_shoulder_lift_joint",       "a_elbow_joint",
-                   "a_wrist_1_joint",       "a_wrist_2_joint",       "a_wrist_3_joint", "b_shoulder_pan_joint", "b_shoulder_lift_joint",       "b_elbow_joint",
-                   "b_wrist_1_joint",       "b_wrist_2_joint",       "b_wrist_3_joint", "human_x_joint", "human_y_joint" };
+  // Create plotting tool
+  ROSPlottingPtr plotter = std::make_shared<tesseract_rosutils::ROSPlotting>(env_->getSceneGraph()->getRoot());
+  if (rviz_)
+    plotter->waitForConnection();
 
-  // Set up ROS interfaces
-  joint_state_subscriber_ =
-      nh_.subscribe(DYNAMIC_OBJECT_JOINT_STATE, 1, &OnlinePlanningExample::subscriberCallback, this);
-  toggle_realtime_service_ = nh_.advertiseService("toggle_realtime", &OnlinePlanningExample::toggleRealtime, this);
+  // Set the robot initial state
+  std::vector<std::string> joint_names;
+  joint_names.push_back("a_shoulder_pan_joint");
+  joint_names.push_back("a_shoulder_lift_joint");
+  joint_names.push_back("a_elbow_joint");
+  joint_names.push_back("a_wrist_1_joint");
+  joint_names.push_back("a_wrist_2_joint");
+  joint_names.push_back("a_wrist_3_joint");
+  joint_names.push_back("a_robotiq_85_right_inner_knuckle_joint");
+  joint_names.push_back("a_robotiq_85_right_finger_tip_joint");
 
-  target_pose_delta_ = Eigen::Isometry3d::Identity();
-  target_pose_base_frame_ = Eigen::Isometry3d::Identity();
-}
+  Eigen::VectorXd joint_pos(8);
+  joint_pos(0) = 2.97326;
+  joint_pos(1) = -1.6538;
+  joint_pos(2) = -2.33488;
+  joint_pos(3) = -2.28384;
+  joint_pos(4) = -2.53001;
+  joint_pos(5) = -3.13221;
+  joint_pos(6) = 0;
+  joint_pos(7) = 0;
 
-void OnlinePlanningExample::subscriberCallback(const sensor_msgs::JointState::ConstPtr& joint_state)
-{
-  // Set the environment state to update the collision model
-  tesseract_->getEnvironment()->setState(joint_state->name, joint_state->position);
 
-  // Update current_trajectory_ so the live trajectory will be visualized correctly
-  for (Eigen::Index i = 0; i < current_trajectory_.rows(); i++)
+  env_->setState(joint_names, joint_pos);
+
+  // Add simulated box to environment
+//  Command::Ptr cmd = addBox(box_x, box_y, box_side);
+//  if (!monitor_->applyCommand(*cmd))
+//    return false;
+
+  ////////////
+  /// PICK ///
+  ////////////
+  if (rviz_)
+    plotter->waitForInput();
+
+  // Create Program
+  CompositeInstruction pick_program("DEFAULT", CompositeInstructionOrder::ORDERED, ManipulatorInfo("ur10e_a"));
+
+  Waypoint pick_swp = StateWaypoint(joint_names, joint_pos);
+  PlanInstruction start_instruction(pick_swp, PlanInstructionType::START);
+  pick_program.setStartInstruction(start_instruction);
+
+  // Define the final pose (on top of the box)
+  Eigen::Isometry3d pick_final_pose;
+  pick_final_pose.linear() = Eigen::Quaterniond(0.0, 0.0, 0.0, 0.0).matrix();
+  pick_final_pose.translation() = Eigen::Vector3d(0.639757210413974, 0.07993900394775277, 0.2449995438351456 + OFFSET);  // rviz world
+  Waypoint pick_wp1 = CartesianWaypoint(pick_final_pose);
+
+  // Define the approach pose
+  Eigen::Isometry3d pick_approach_pose = pick_final_pose;
+  pick_approach_pose.translation() += Eigen::Vector3d(0.0, 0.0, 0.15);
+  Waypoint pick_wp0 = CartesianWaypoint(pick_approach_pose);
+
+  // Plan freespace from start
+  PlanInstruction pick_plan_a0(pick_wp0, PlanInstructionType::FREESPACE, "FREESPACE");
+  pick_plan_a0.setDescription("From start to pick Approach");
+
+  // Plan cartesian approach
+  PlanInstruction pick_plan_a1(pick_wp1, PlanInstructionType::LINEAR, "CARTESIAN");
+
+  pick_plan_a1.setDescription("Pick Approach");
+
+  // Add Instructions to program
+  pick_program.push_back(pick_plan_a0);
+  pick_program.push_back(pick_plan_a1);
+
+  // Create Process Planning Server
+  ProcessPlanningServer planning_server(std::make_shared<ROSProcessEnvironmentCache>(monitor_), 6);
+  planning_server.loadDefaultProcessPlanners();
+
+
+  // Create TrajOpt Profile
+  auto trajopt_plan_profile = std::make_shared<tesseract_planning::TrajOptDefaultPlanProfile>();
+  trajopt_plan_profile->cartesian_coeff = Eigen::VectorXd::Constant(6, 1, 10);
+
+  auto trajopt_composite_profile = std::make_shared<tesseract_planning::TrajOptDefaultCompositeProfile>();
+  trajopt_composite_profile->collision_constraint_config.enabled = false;
+  trajopt_composite_profile->collision_cost_config.safety_margin = 0.0007;
+  trajopt_composite_profile->collision_cost_config.coeff = 50;
+
+
+  auto trajopt_solver_profile = std::make_shared<tesseract_planning::TrajOptDefaultSolverProfile>();
+  trajopt_solver_profile->opt_info.max_iter = 100;
+
+  // Add profile to Dictionary
+  planning_server.getProfiles()->addProfile<tesseract_planning::TrajOptPlanProfile>("CARTESIAN", trajopt_plan_profile);
+  planning_server.getProfiles()->addProfile<tesseract_planning::TrajOptCompositeProfile>("DEFAULT",
+                                                                                         trajopt_composite_profile);
+  planning_server.getProfiles()->addProfile<tesseract_planning::TrajOptSolverProfile>("DEFAULT",
+                                                                                      trajopt_solver_profile);
+
+  ROS_INFO("Pick plan");
+
+  // Create Process Planning Request
+  ProcessPlanningRequest pick_request;
+  pick_request.name = tesseract_planning::process_planner_names::TRAJOPT_PLANNER_NAME;
+  pick_request.instructions = Instruction(pick_program);
+
+  // Print Diagnostics
+  pick_request.instructions.print("Program: ");
+
+
+  //for(int num = 0 ; num < 24 ; num++)
+  //std::cout << "!!!!!!!" << joint_names.size() << std::endl;
+
+  // Solve process plan
+  ProcessPlanningFuture pick_response = planning_server.run(pick_request);
+  planning_server.waitForAll();
+
+  // Plot Process Trajectory
+  if (rviz_ && plotter != nullptr && plotter->isConnected())
   {
-    current_trajectory_.block(i, 12, 1, 2) << joint_state->position[12], joint_state->position[13];
+    plotter->waitForInput();
+    const auto* cp = pick_response.results->cast_const<CompositeInstruction>();
+    tesseract_common::Toolpath toolpath = tesseract_planning::toToolpath(*cp, env_);
+    tesseract_common::JointTrajectory trajectory = tesseract_planning::toJointTrajectory(*cp);
+    plotter->plotMarker(ToolpathMarker(toolpath));
+    plotter->plotTrajectory(trajectory, env_->getStateSolver());
   }
 
-  // Update the target location
-  if (target_pose_constraint_)
-  {
-    target_pose_delta_ = Eigen::Isometry3d::Identity();
-    target_pose_delta_.translate(
-        Eigen::Vector3d(joint_state->position[14], joint_state->position[15], joint_state->position[16]));
-    target_pose_constraint_->SetTargetPose(target_pose_base_frame_ * target_pose_delta_);
+//  /////////////
+//  /// PLACE ///
+//  /////////////
+//
+//  if (rviz_)
+//    plotter->waitForInput();
+//
+//  // Detach the simulated box from the world and attach to the end effector
+//  tesseract_environment::Commands cmds;
+//  auto joint_box2 = std::make_shared<Joint>("joint_box2");
+//  joint_box2->parent_link_name = LINK_END_EFFECTOR_NAME;
+//  joint_box2->child_link_name = LINK_BOX_NAME;
+//  joint_box2->type = JointType::FIXED;
+//  joint_box2->parent_to_joint_origin_transform = Eigen::Isometry3d::Identity();
+//  joint_box2->parent_to_joint_origin_transform.translation() += Eigen::Vector3d(0, 0, box_side / 2.0);
+//  cmds.push_back(std::make_shared<tesseract_environment::MoveLinkCommand>(joint_box2));
+//  cmds.push_back(
+//      std::make_shared<tesseract_environment::AddAllowedCollisionCommand>(LINK_BOX_NAME, "iiwa_link_ee", "Never"));
+//  cmds.push_back(
+//      std::make_shared<tesseract_environment::AddAllowedCollisionCommand>(LINK_BOX_NAME, "iiwa_link_7", "Never"));
+//  cmds.push_back(
+//      std::make_shared<tesseract_environment::AddAllowedCollisionCommand>(LINK_BOX_NAME, "iiwa_link_6", "Never"));
+//  monitor_->applyCommands(cmds);
+//
+//  // Get the last move instruction
+//  const CompositeInstruction* pick_composite = pick_response.results->cast_const<CompositeInstruction>();
+//  const MoveInstruction* pick_final_state = tesseract_planning::getLastMoveInstruction(*pick_composite);
+//
+//  // Retreat to the approach pose
+//  Eigen::Isometry3d retreat_pose = pick_approach_pose;
+//
+//  // Define some place locations.
+//  Eigen::Isometry3d bottom_right_shelf, bottom_left_shelf, middle_right_shelf, middle_left_shelf, top_right_shelf,
+//      top_left_shelf;
+//  bottom_right_shelf.linear() = Eigen::Quaterniond(0, 0, 0.7071068, 0.7071068).matrix();
+//  bottom_right_shelf.translation() = Eigen::Vector3d(0.148856, 0.73085, 0.906);
+//  bottom_left_shelf.linear() = Eigen::Quaterniond(0, 0, 0.7071068, 0.7071068).matrix();
+//  bottom_left_shelf.translation() = Eigen::Vector3d(-0.148856, 0.73085, 0.906);
+//  middle_right_shelf.linear() = Eigen::Quaterniond(0, 0, 0.7071068, 0.7071068).matrix();
+//  middle_right_shelf.translation() = Eigen::Vector3d(0.148856, 0.73085, 1.16);
+//  middle_left_shelf.linear() = Eigen::Quaterniond(0, 0, 0.7071068, 0.7071068).matrix();
+//  middle_left_shelf.translation() = Eigen::Vector3d(-0.148856, 0.73085, 1.16);
+//  top_right_shelf.linear() = Eigen::Quaterniond(0, 0, 0.7071068, 0.7071068).matrix();
+//  top_right_shelf.translation() = Eigen::Vector3d(0.148856, 0.73085, 1.414);
+//  top_left_shelf.linear() = Eigen::Quaterniond(0, 0, 0.7071068, 0.7071068).matrix();
+//  top_left_shelf.translation() = Eigen::Vector3d(-0.148856, 0.73085, 1.414);
+//
+//  // Set the target pose to middle_left_shelf
+//  Eigen::Isometry3d place_pose = middle_left_shelf;
+//
+//  // Setup approach for place move
+//  Eigen::Isometry3d place_approach_pose = place_pose;
+//  place_approach_pose.translation() += Eigen::Vector3d(0.0, -0.25, 0);
+//
+//  // Create Program
+//  CompositeInstruction place_program("DEFAULT", CompositeInstructionOrder::ORDERED, ManipulatorInfo("Manipulator"));
+//
+//  PlanInstruction place_start_instruction(pick_final_state->getWaypoint(), PlanInstructionType::START);
+//  place_program.setStartInstruction(place_start_instruction);
+//
+//  // Define the approach pose
+//  Waypoint place_wp0 = CartesianWaypoint(retreat_pose);
+//
+//  // Define the final pose approach
+//  Waypoint place_wp1 = CartesianWaypoint(place_approach_pose);
+//
+//  // Define the final pose
+//  Waypoint place_wp2 = CartesianWaypoint(place_pose);
+//
+//  // Plan cartesian retraction from picking up the box
+//  PlanInstruction place_plan_a0(place_wp0, PlanInstructionType::LINEAR, "CARTESIAN");
+//  place_plan_a0.setDescription("Place retraction");
+//
+//  // Plan freespace to approach for box drop off
+//  PlanInstruction place_plan_a1(place_wp1, PlanInstructionType::FREESPACE, "FREESPACE");
+//  place_plan_a1.setDescription("Place Freespace");
+//
+//  // Plan cartesian approach to box drop location
+//  PlanInstruction place_plan_a2(place_wp2, PlanInstructionType::LINEAR, "CARTESIAN");
+//  place_plan_a2.setDescription("Place approach");
+//
+//  // Add Instructions to program
+//  place_program.push_back(place_plan_a0);
+//  place_program.push_back(place_plan_a1);
+//  place_program.push_back(place_plan_a2);
+//
+//  // Create Process Planning Request
+//  ProcessPlanningRequest place_request;
+//  place_request.name = tesseract_planning::process_planner_names::TRAJOPT_PLANNER_NAME;
+//  place_request.instructions = Instruction(place_program);
+//
+//  // Print Diagnostics
+//  place_request.instructions.print("Program: ");
+//
+//  // Solve process plan
+//  ProcessPlanningFuture place_response = planning_server.run(place_request);
+//  planning_server.waitForAll();
 
-    plotter_->clear();
-    plotter_->plotAxis(target_pose_base_frame_ * target_pose_delta_, 0.3);
-  }
-}
+  // Plot Process Trajectory
+//  if (rviz_ && plotter != nullptr && plotter->isConnected())
+//  {
+//    plotter->waitForInput();
+//    const auto* ci = place_response.results->cast_const<tesseract_planning::CompositeInstruction>();
+//    tesseract_common::Toolpath toolpath = tesseract_planning::toToolpath(*ci, env_);
+//    tesseract_common::JointTrajectory trajectory = tesseract_planning::toJointTrajectory(*ci);
+//    plotter->plotMarker(ToolpathMarker(toolpath));
+//    plotter->plotTrajectory(trajectory, env_->getStateSolver());
+//  }
 
-bool OnlinePlanningExample::toggleRealtime(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res)
-{
-  realtime_running_ = req.data;
-  res.success = true;
-  if (realtime_running_)
-    onlinePlan();
+  if (rviz_)
+    plotter->waitForInput();
+
+  ROS_INFO("Done");
   return true;
 }
-
-bool OnlinePlanningExample::run()
-{
-  ROS_ERROR("Press enter to setup the problem");
-  std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-  setupProblem();
-
-  ROS_ERROR("Press enter to run live");
-  ROS_ERROR("Then use the joint state publisher gui to move the human_x/y joints or the target_x/y/z joints");
-  std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-  realtime_running_ = true;
-  onlinePlan();
-
-  return true;
-}
-
-bool OnlinePlanningExample::setupProblem()
-{
-  // 1) Create the problem
-  nlp_ = ifopt::Problem{};
-
-  // 2) Add Variables
-  Eigen::MatrixX2d joint_limits_eigen = manipulator_fk_->getLimits();
-  Eigen::VectorXd home_position = Eigen::VectorXd::Zero(manipulator_fk_->numJoints());
-  Eigen::VectorXd target_joint_position(manipulator_fk_->numJoints());
-  target_joint_position << 3.12608892488384, -1.52028611600049, -1.85446742889107, -1.32746492527331, -4.71472745404594,-3.15798824844802;
-  auto initial_states = interpolate(home_position, target_joint_position, steps_);
-  std::vector<trajopt::JointPosition::ConstPtr> vars;
-  for (std::size_t ind = 0; ind < static_cast<std::size_t>(steps_); ind++)
-  {
-    auto var = std::make_shared<trajopt::JointPosition>(
-        initial_states[ind], manipulator_fk_->getJointNames(), "Joint_Position_" + std::to_string(ind));
-    var->SetBounds(joint_limits_eigen);
-    vars.push_back(var);
-    nlp_.AddVariableSet(var);
-  }
-
-  // 3) Add costs and constraints
-  // Add the home position as a joint position constraint
-  {
-    auto home_position = Eigen::VectorXd::Zero(6);
-    std::vector<trajopt::JointPosition::ConstPtr> var_vec(1, vars[0]);
-    auto home_constraint = std::make_shared<trajopt::JointPosConstraint>(home_position, var_vec, "Home_Position");
-    nlp_.AddConstraintSet(home_constraint);
-  }
-  // Add the target pose constraint for the final step
-  {
-    manipulator_fk_->calcFwdKin(target_pose_base_frame_, target_joint_position);
-    Eigen::Isometry3d target_tf = target_pose_base_frame_ * target_pose_delta_;
-    std::cout << "Target Joint Position: " << target_joint_position.transpose() << std::endl;
-    std::cout << "Target TF:\n" << target_tf.matrix() << std::endl;
-
-    auto kinematic_info = std::make_shared<trajopt::CartPosKinematicInfo>(
-        manipulator_fk_, manipulator_adjacency_map_, Eigen::Isometry3d::Identity(), manipulator_fk_->getTipLinkName());
-
-    target_pose_constraint_ = std::make_shared<trajopt::CartPosConstraint>(target_tf, kinematic_info, vars.back());
-    nlp_.AddConstraintSet(target_pose_constraint_);
-  }
-  // Add joint velocity cost for all timesteps
-  {
-    Eigen::VectorXd vel_target = Eigen::VectorXd::Zero(6);
-    auto vel_constraint = std::make_shared<trajopt::JointVelConstraint>(vel_target, vars, "JointVelocity");
-
-    // Must link the variables to the constraint since that happens in AddConstraintSet
-    vel_constraint->LinkWithVariables(nlp_.GetOptVariables());
-    auto vel_cost = std::make_shared<trajopt::SquaredCost>(vel_constraint);
-    nlp_.AddCostSet(vel_cost);
-  }
-  // Add a collision cost for all steps
-  for (std::size_t i = 0; i < static_cast<std::size_t>(steps_) - 1; i++)
-  {
-    double margin_coeff = .1;
-    double margin = 0.1;
-    trajopt::SafetyMarginData::ConstPtr margin_data = std::make_shared<trajopt::SafetyMarginData>(margin, margin_coeff);
-    double safety_margin_buffer = 0.10;
-    sco::VarVector var_vector;  // unused
-
-    auto collision_evaluator = std::make_shared<trajopt::SingleTimestepCollisionEvaluator>(
-        manipulator_fk_,
-        tesseract_->getEnvironment(),
-        manipulator_adjacency_map_,
-        Eigen::Isometry3d::Identity(),
-        margin_data,
-        tesseract_collision::ContactTestType::CLOSEST,
-        var_vector,
-        trajopt::CollisionExpressionEvaluatorType::SINGLE_TIME_STEP,
-        safety_margin_buffer,
-        true);
-
-    auto collision_constraint = std::make_shared<trajopt::CollisionConstraintIfopt>(collision_evaluator, vars[i]);
-    collision_constraint->LinkWithVariables(nlp_.GetOptVariables());
-    auto collision_cost = std::make_shared<trajopt::SquaredCost>(collision_constraint);
-    nlp_.AddCostSet(collision_constraint);
-  }
-
-  nlp_.PrintCurrent();
-  return true;
-}
-
-bool OnlinePlanningExample::onlinePlan()
-{
-  ros::spinOnce();
-
-  // Setup Solver
-  auto qp_solver = std::make_shared<trajopt_sqp::OSQPEigenSolver>();
-  trajopt_sqp::TrustRegionSQPSolver solver(qp_solver);
-
-  // Adjust this to be larger to adapt quicker but more jerkily
-  solver.params.initial_trust_box_size = box_size_;
-  solver.init(nlp_);
-  solver.verbose = false;
-
-  console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_INFO);
-
-  using namespace std::chrono;
-  Eigen::VectorXd x = nlp_.GetOptVariables()->GetValues();
-  while (realtime_running_ && ros::ok())
-  {
-    ros::spinOnce();
-    auto start = high_resolution_clock::now();
-
-    // Loop over the updates because the visualization is slow
-    int num_steps = 1;
-    for (int i = 0; i < num_steps; i++)
-    {
-      // Convexify the costs and constraints around their current values
-      solver.qp_problem->convexify();
-
-      // For now, we are recreating the problem each step
-      solver.qp_solver->clear();
-      solver.qp_solver->init(solver.qp_problem->getNumQPVars(), solver.qp_problem->getNumQPConstraints());
-      solver.qp_solver->updateHessianMatrix(solver.qp_problem->getHessian());
-      solver.qp_solver->updateGradient(solver.qp_problem->getGradient());
-      solver.qp_solver->updateLinearConstraintsMatrix(solver.qp_problem->getConstraintMatrix());
-      solver.qp_solver->updateBounds(solver.qp_problem->getBoundsLower(), solver.qp_problem->getBoundsUpper());
-
-      // Step the optimization
-      solver.stepOptimization(nlp_);
-
-      // Update the results
-      x = solver.getResults().new_var_vals;
-    }
-
-    auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<microseconds>(stop - start) / static_cast<double>(num_steps);
-
-    // Update manipulator joint values
-    Eigen::Map<trajopt::TrajArray> trajectory(x.data(), steps_, 6);
-    current_trajectory_.block(0, 0, steps_, 6) = trajectory;
-
-    // Display Results
-    plotter_->plotTrajectory(joint_names_, current_trajectory_);
-
-    std::string message =
-        "Solver Frequency (Hz): " + std::to_string(1.0 / static_cast<double>(duration.count()) * 1000000.) +
-        "\nCost: " + std::to_string(nlp_.EvaluateCostFunction(x.data()));
-    std::cout << message << std::endl;
-    std::cout << current_trajectory_ << std::endl;
-  }
-
-  return true;
-}
-}  // namespace ur10e_collision_free_demo
-
+}  // namespace tesseract_ros_examples
 

@@ -9,28 +9,36 @@
   <arg name="testing" default="false"/>
   <arg name="steps" default="12"/>
   <arg name="box_size" default="0.002"/>
-
+  
+      <arg name="steps_per_phase" default="10"/>
+    <arg name="file_write_cb" default="false" />
+     <!-- these are the arguments you can pass this launch file, for example paused:=true -->
+  <arg name="limited" default="false" doc="If true, limits joint range [-PI, PI] on all joints." />
+  <arg name="paused" default="true"/>
+  <arg name="use_sim_time" default="true"/>
+  <arg name="gui" default="true"/>
+  <arg name="headless" default="false"/>
+  <arg name="debug" default="false"/>
+  
   <!-- Load universal robot description format (URDF) -->
-  <param name="$(arg robot_description)" command="$(find xacro)/xacro --inorder '$(find ur10e_collision_free_demo)/urdf/online_planning_example.xacro'" />
+  <param name="$(arg robot_description)" command="$(find xacro)/xacro --inorder '$(find ur_e_description)/urdf/assembly.urdf.xacro'" />
 
-  <!-- The semantic description that corresponds to the URDF -->
-  <param name="$(arg robot_description)_semantic" textfile="$(find ur10e_collision_free_demo)/config/online_planning_example.srdf" />
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
+    <remap from="joint_states" to="/ur10e_a/joint_states" />
+  </node>
 
-  <group unless="$(arg testing)">
-    <!-- If needed, broadcast static tf for robot root -->
-    <node pkg="tf" type="static_transform_publisher" name="virtual_joint_broadcaster_0" args="0 0 0 0 0 0 world base_link 100" />
+  <!-- Load Robot Semantic -->
+  <param name="robot_description_semantic" textfile="$(find ur10e_collision_free_demo)/config/online_planning_example.srdf" />
 
-    <node pkg="ur10e_collision_free_demo" type="ur10e_collision_free_demo_ur10e_collision_free_demo_node" name="ur10e_collision_free_demo_node" output="screen">
-      <param name="plotting" type="bool" value="$(arg plotting)"/>
-      <param name="rviz" type="bool" value="$(arg rviz)"/>
-      <param name="steps" type="int" value="$(arg steps)"/>
-      <param name="box_size" type="double" value="$(arg box_size)"/>
-    </node>
-
-    <!-- Launch visualization -->
-    <node if="$(arg rviz)" pkg="rviz" type="rviz" name="online_planning_example_rviz"
-         args="-d $(find tesseract_ros_examples)/config/examples.rviz" />
-
-    <node name="joint_state_publisher_gui" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" respawn="true"/>
-  </group>
+  <!-- Launch planner node  -->
+  <node name="ur10e_collision_free_demo_node" pkg="ur10e_collision_free_demo" type="ur10e_collision_free_demo_node" output="screen">
+    <param name="steps_per_phase" value="$(arg steps_per_phase)"/>
+    <param name="plotting" value="$(arg plotting)"/>
+    <param name="file_write_cb" value="$(arg file_write_cb)" />
+    <param name="rviz" type="bool" value="$(arg rviz)"/>
+  </node>
+  <!-- Launch visualization -->
+  <node if="$(arg rviz)" pkg="rviz" type="rviz" name="online_planning_example_rviz"
+       args="-d $(find tesseract_ros_examples)/config/examples.rviz" />
+     
 </launch>
