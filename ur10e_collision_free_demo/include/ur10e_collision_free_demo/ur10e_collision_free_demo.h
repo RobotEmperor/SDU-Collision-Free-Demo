@@ -16,6 +16,10 @@ TESSERACT_COMMON_IGNORE_WARNINGS_POP
 
 #include <tesseract_common/types.h>
 #include <ur10e_collision_free_demo/example.h>
+#include <rw/math.hpp>
+
+#define DEGREE2RADIAN M_PI/180.0
+#define RADIAN2DEGREE  180.0/M_PI
 
 namespace online_planning_test
 {
@@ -33,10 +37,16 @@ public:
   PickAndPlaceExample(PickAndPlaceExample&&) = default;
   PickAndPlaceExample& operator=(PickAndPlaceExample&&) = default;
 
+  void make_circle_waypoints(int direction_, double radious_);
   bool run() override;
 
 private:
   ros::NodeHandle nh_;
+  std::vector<std::vector<double>> waypoints_robot_a_;
+  std::vector<std::vector<double>> waypoints_robot_b_;
+
+  std::vector<double> waypoint_pose_a_;
+  std::vector<double> waypoint_pose_b_;
 
   tesseract_environment::Command::Ptr addBox(double box_x, double box_y, double box_side);
 };
