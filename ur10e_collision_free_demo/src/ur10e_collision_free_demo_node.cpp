@@ -22,6 +22,6 @@ int main(int argc, char** argv)
   pnh.param("plotting", plotting, plotting);
   pnh.param("rviz", rviz, rviz);
 
-  PickAndPlaceExample example(nh, plotting, rviz);
+  TestExample example(nh, plotting, rviz);
   example.run();
 }
