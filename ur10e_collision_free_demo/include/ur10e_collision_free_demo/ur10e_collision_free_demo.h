@@ -134,6 +134,8 @@ class TestExample : public Example
         Eigen::Isometry3d& final_pose,
         int steps_per_phase);
 
+    Eigen::VectorXd force_constraint_func(const Eigen::VectorXd& current_joints_pos);
+
 };
 
 }  // namespace tesseract_ros_examples

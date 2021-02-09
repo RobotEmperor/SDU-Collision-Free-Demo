@@ -36,15 +36,15 @@ static const double LONGEST_VALID_SEGMENT_LENGTH = 0.005;
 namespace online_planning_test
 {
 TestExample::TestExample(const ros::NodeHandle& nh, bool plotting, bool rviz)
-                                                                                                  : Example(plotting, rviz), nh_(nh)
-                                                                                                    {
+                                                                                                          : Example(plotting, rviz), nh_(nh)
+                                                                                                            {
   // total waypoints
   waypoints_robot_a_.clear();
   waypoints_robot_b_.clear();
 
   waypoint_pose_a_.resize(6);
   waypoint_pose_b_.resize(6);
-                                                                                                    }
+                                                                                                            }
 
 //PickAndPlaceExample::TrajoptPickAndPlaceConstructor(tesseract::BasicEnvConstPtr env,
 //                                                               std::string manipulator,
@@ -325,6 +325,82 @@ void TestExample::make_circle_waypoints(int direction_, double radious_)
     }
   }
 }
+//
+Eigen::VectorXd TestExample::force_constraint_func(const Eigen::VectorXd& current_joints_pos)
+{
+  static Eigen::VectorXd previous_joints_pos(6);
+  //initial joint pose
+  Eigen::VectorXd joint_init_pos(6);
+  joint_init_pos(0) = 2.97326;
+  joint_init_pos(1) = -1.6538;
+  joint_init_pos(2) = -2.33488;
+  joint_init_pos(3) = -2.28384;
+  joint_init_pos(4) = -2.53001;
+  joint_init_pos(5) = -3.13221;
+
+  std::vector<std::string> joint_names;
+  joint_names.push_back("a_shoulder_pan_joint");
+  joint_names.push_back("a_shoulder_lift_joint");
+  joint_names.push_back("a_elbow_joint");
+  joint_names.push_back("a_wrist_1_joint");
+  joint_names.push_back("a_wrist_2_joint");
+  joint_names.push_back("a_wrist_3_joint");
+
+  std::string link = "a_final_link_2";
+  Eigen::Isometry3d current_pose = env_->getCurrentState()->link_transforms.at(link);
+  Eigen::Isometry3d initial_pose_;
+
+  auto kin = env_->getManipulatorManager()->getFwdKinematicSolver("ur10e_a");
+  kin->calcFwdKin(initial_pose_, joint_init_pos);
+
+  // constraint function
+
+  double spring_constant_k_ = 10;
+  double force_magnitude_ = 0;
+  double desired_force_magnitude_ = 10;
+  static Eigen::VectorXd violation_joints(6);
+  violation_joints << 0,0,0,0,0,0;
+
+  static std::vector<double> force_unit_vector_;
+
+  force_magnitude_ = sqrt(spring_constant_k_*spring_constant_k_*(pow(2,initial_pose_.translation()(0) - current_pose.translation()(0))
+      + pow(2,initial_pose_.translation()(1) - current_pose.translation()(1))
+      + pow(2,initial_pose_.translation()(2) - current_pose.translation()(2))));
+
+  force_unit_vector_.push_back(initial_pose_.translation()(0) - current_pose.translation()(0));
+  force_unit_vector_.push_back(initial_pose_.translation()(1) - current_pose.translation()(1));
+  force_unit_vector_.push_back(initial_pose_.translation()(2) - current_pose.translation()(2));
+
+  //    for(long unsigned int num_inner_ = 0; num_inner_ < 3; num_inner_ ++)
+  //    {
+  //      current_object_force_torque_vector_[num_+1][num_inner_]=force_unit_vector_[num_inner_]*force_magnitude_;
+  //    }
+  //check
+  std::cout << force_unit_vector_ << std::endl;
+  //std::cout << objects_force_magnitude_ << std::endl;
+  force_unit_vector_.clear();
+
+  if(force_magnitude_ - desired_force_magnitude_+2 <= 0 )
+  {
+    violation_joints << 0,0,0,0,0,0;
+    previous_joints_pos = current_joints_pos;
+    return violation_joints;
+  }
+  if(desired_force_magnitude_- force_magnitude_ <= 0)
+  {
+    violation_joints << 0,0,0,0,0,0;
+    previous_joints_pos = current_joints_pos;
+    return violation_joints;
+  }
+  else
+  {
+    violation_joints = previous_joints_pos - current_joints_pos;
+  }
+
+  previous_joints_pos = current_joints_pos;
+  return violation_joints;
+}
+//
 bool TestExample::run()
 {
   using tesseract_planning::CartesianWaypoint;
@@ -468,6 +544,8 @@ bool TestExample::run()
   PlanInstruction start_instruction(pick_swp, PlanInstructionType::START);
   pick_program.setStartInstruction(start_instruction);
 
+
+
   //path planning
   // Define the approach pose
   Eigen::Isometry3d temp_pose;
@@ -565,6 +643,25 @@ bool TestExample::run()
   auto trajopt_plan_profile = std::make_shared<tesseract_planning::TrajOptDefaultPlanProfile>();
   trajopt_plan_profile->cartesian_coeff = Eigen::VectorXd::Constant(6, 1, 10);
 
+  std::function<Eigen::VectorXd(TestExample&, const Eigen::VectorXd&)> temp_function = &TestExample::force_constraint_func;
+  //temp_function = force_constraint_func;
+  sco::VectorOfVector::func temp_a;
+  //temp_a = force_constraint_func;
+  //sco::MatrixOfVector::func,
+  sco::ConstraintType a = sco::ConstraintType::EQ;
+  Eigen::VectorXd error_coeff(6);
+  error_coeff << 1,1,1,1,1,1 ;
+
+  std::tuple<sco::VectorOfVector::func, sco::MatrixOfVector::func, sco::ConstraintType, Eigen::VectorXd> temp_tuple(temp_a,nullptr,a,error_coeff);
+
+
+  std::vector<std::tuple<sco::VectorOfVector::func, sco::MatrixOfVector::func, sco::ConstraintType, Eigen::VectorXd>>
+        constraint_error_functions_;
+
+  constraint_error_functions_.push_back(temp_tuple);
+
+  trajopt_plan_profile->constraint_error_functions = constraint_error_functions_;
+
   auto trajopt_composite_profile = std::make_shared<tesseract_planning::TrajOptDefaultCompositeProfile>();
   //trajopt_composite_profile->collision_constraint_config.type=trajopt::CollisionEvaluatorType::CAST_CONTINUOUS;
   trajopt_composite_profile->collision_constraint_config.enabled = false;
@@ -581,6 +678,8 @@ bool TestExample::run()
       trajopt_composite_profile);
   planning_server.getProfiles()->addProfile<tesseract_planning::TrajOptSolverProfile>("DEFAULT",
       trajopt_solver_profile);
+
+  //tesseract_planning::createUserDefinedTermInfo(start_index, end_index, error_function, jacobian_function, type)
 
   ROS_INFO("Pick plan");
 
@@ -606,133 +705,6 @@ bool TestExample::run()
     plotter->plotMarker(ToolpathMarker(toolpath));
     plotter->plotTrajectory(trajectory, env_->getStateSolver());
   }
-
-  /////////////
-  /// PLACE ///
-  /////////////
-
-//  // Get the last move instruction
-//  const CompositeInstruction* pick_composite = pick_response.results->cast_const<CompositeInstruction>();
-//  const MoveInstruction* pick_final_state = tesseract_planning::getLastMoveInstruction(*pick_composite);
-//
-//
-//  // Create Program
-//  CompositeInstruction place_program2("DEFAULT", CompositeInstructionOrder::ORDERED, ManipulatorInfo("ur10e_a"));
-//  PlanInstruction place_start_instruction(pick_final_state->getWaypoint(), PlanInstructionType::START);
-//  place_program2.setStartInstruction(place_start_instruction);
-
-//  tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[1][0], waypoints_robot_a_[1][1], waypoints_robot_a_[1][2]), RPY<>(waypoints_robot_a_[1][3],waypoints_robot_a_[1][4],waypoints_robot_a_[1][5]).toRotation3D()); // RPY
-//  tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
-//
-//
-//  temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
-//  temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
-//
-//  Waypoint temp_wp_0 = CartesianWaypoint(temp_pose);
-//
-//  PlanInstruction pick_plan_a0(temp_wp_0, PlanInstructionType::FREESPACE, "DEFAULT");
-//  pick_plan_a0.setDescription("pose_1");
-//
-//
-//
-//  tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[2][0], waypoints_robot_a_[2][1], waypoints_robot_a_[2][2]), RPY<>(waypoints_robot_a_[2][3],waypoints_robot_a_[2][4],waypoints_robot_a_[2][5]).toRotation3D()); // RPY
-//  tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
-//
-//
-//  temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
-//  temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
-//
-//  Waypoint temp_wp_2 = CartesianWaypoint(temp_pose);
-//
-//  PlanInstruction pick_plan_a2(temp_wp_2, PlanInstructionType::FREESPACE, "DEFAULT");
-//  pick_plan_a2.setDescription("pose_2");
-//
-//  tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[3][0], waypoints_robot_a_[3][1], waypoints_robot_a_[3][2]), RPY<>(waypoints_robot_a_[3][3],waypoints_robot_a_[3][4],waypoints_robot_a_[3][5]).toRotation3D()); // RPY
-//  tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
-//
-//
-//  temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
-//  temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
-//
-//  Waypoint temp_wp_3 = CartesianWaypoint(temp_pose);
-//
-//  PlanInstruction pick_plan_a3(temp_wp_3, PlanInstructionType::FREESPACE, "DEFAULT");
-//  pick_plan_a3.setDescription("pose_3");
-//
-//
-//  tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[4][0], waypoints_robot_a_[4][1], waypoints_robot_a_[4][2]), RPY<>(waypoints_robot_a_[4][3],waypoints_robot_a_[4][4],waypoints_robot_a_[4][5]).toRotation3D()); // RPY
-//  tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
-//
-//
-//  temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
-//  temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
-//
-//  Waypoint temp_wp_4 = CartesianWaypoint(temp_pose);
-//
-//  PlanInstruction pick_plan_a4(temp_wp_4, PlanInstructionType::FREESPACE, "DEFAULT");
-//  pick_plan_a4.setDescription("pose_4");
-//
-//
-//  place_program2.push_back(pick_plan_a0);
-//  place_program2.push_back(pick_plan_a2);
-//  place_program2.push_back(pick_plan_a3);
-//  place_program2.push_back(pick_plan_a4);
-
-//  // Create Process Planning Server
-//  ProcessPlanningServer planning_server2(std::make_shared<ROSProcessEnvironmentCache>(monitor_), 10);
-//  planning_server2.loadDefaultProcessPlanners();
-//
-//
-//  // Create TrajOpt Profile
-//  auto trajopt_plan_profile2 = std::make_shared<tesseract_planning::TrajOptDefaultPlanProfile>();
-//  trajopt_plan_profile2->cartesian_coeff = Eigen::VectorXd::Constant(6, 1, 10);
-//
-//  auto trajopt_composite_profile2 = std::make_shared<tesseract_planning::TrajOptDefaultCompositeProfile>();
-//  trajopt_composite_profile2->smooth_velocities = true;
-//  //trajopt_composite_profile2->velocity_coeff =
-//  trajopt_composite_profile2->collision_constraint_config.enabled = false;
-//  trajopt_composite_profile2->collision_cost_config.safety_margin = 0.001;
-//  trajopt_composite_profile2->collision_cost_config.coeff = 0.01;
-//
-//  auto trajopt_solver_profile2 = std::make_shared<tesseract_planning::TrajOptDefaultSolverProfile>();
-//  trajopt_solver_profile2->opt_info.max_iter = 500;
-//  trajopt_solver_profile2->convex_solver = sco::ModelType::OSQP;
-//
-//  // Add profile to Dictionary
-//  planning_server2.getProfiles()->addProfile<tesseract_planning::TrajOptPlanProfile>("FREESPACE", trajopt_plan_profile2);
-//  planning_server2.getProfiles()->addProfile<tesseract_planning::TrajOptCompositeProfile>("DEFAULT",
-//      trajopt_composite_profile2);
-//  planning_server2.getProfiles()->addProfile<tesseract_planning::TrajOptSolverProfile>("DEFAULT",
-//      trajopt_solver_profile2);
-//
-//  ROS_INFO("circle_plan");
-//
-//  // Create Process Planning Request
-//  ProcessPlanningRequest pick_request2;
-//  pick_request2.name = tesseract_planning::process_planner_names::TRAJOPT_PLANNER_NAME;
-//  pick_request2.instructions = Instruction(place_program2);
-//
-//  // Print Diagnostics
-//  pick_request2.instructions.print("Program: ");
-//
-//
-//  // Solve process plan
-//  ProcessPlanningFuture pick_response2 = planning_server2.run(pick_request2);
-//  planning_server2.waitForAll();
-//
-//  // Plot Process Trajectory
-//  if (rviz_ && plotter != nullptr && plotter->isConnected())
-//  {
-//    //plotter->waitForInput();
-//    const auto* cp = pick_response2.results->cast_const<CompositeInstruction>();
-//    tesseract_common::Toolpath toolpath2 = tesseract_planning::toToolpath(*cp, env_);
-//    tesseract_common::JointTrajectory trajectory2 = tesseract_planning::toJointTrajectory(*cp);
-//    plotter->plotMarker(ToolpathMarker(toolpath2));
-//    plotter->plotTrajectory(trajectory2, env_->getStateSolver());
-//  }
-//
-//  if (rviz_)
-//    plotter->waitForInput();
 
   ROS_INFO("Done");
   return true;

@@ -32,7 +32,7 @@ catkin_package(
   DEPENDS system_lib
 )
     
-add_library(ur10e_collision_free_demo_lib src/ur10e_collision_free_demo.cpp)
+add_library(ur10e_collision_free_demo_lib src/ur10e_collision_free_demo.cpp)# src/force_constraint.cpp)
 target_link_libraries(ur10e_collision_free_demo_lib ${ROBWORK_LIBRARIES} tesseract::tesseract_environment_core tesseract::tesseract_environment_ofkt tesseract::tesseract_process_managers ${catkin_LIBRARIES})
 target_include_directories(ur10e_collision_free_demo_lib PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
