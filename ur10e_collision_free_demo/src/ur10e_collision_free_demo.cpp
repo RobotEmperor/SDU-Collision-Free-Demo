@@ -262,7 +262,7 @@ void TestExample::addLinearMotion(trajopt::ProblemConstructionInfo& pci,
 void TestExample::make_circle_waypoints(int direction_, double radious_)
 {
   double x_,y_;
-  double rotation_z_;
+  double rotation_x_, rotation_y_, rotation_z_;
   double theta_;
   double offset_;
   x_ = 0;
@@ -285,9 +285,11 @@ void TestExample::make_circle_waypoints(int direction_, double radious_)
     {
       x_ = -radious_*sin(theta_*num + offset_);
       y_ = radious_*cos(theta_*num + offset_);
-      rotation_z_ = 5*DEGREE2RADIAN*num;
+      rotation_y_ = 33*DEGREE2RADIAN*num;
+      rotation_z_ = 0*DEGREE2RADIAN*num;
+      rotation_x_ = -33*DEGREE2RADIAN*num;
 
-      tf_small_pulley_to_circle_points_ = Transform3D<> (Vector3D<>(x_, y_, 0), RPY<>(rotation_z_,0,0).toRotation3D()); // RPY
+      tf_small_pulley_to_circle_points_ = Transform3D<> (Vector3D<>(x_, y_, 0), RPY<>(rotation_z_,rotation_y_,rotation_x_).toRotation3D()); // RPY
       tf_big_pulley_to_circle_points_ = tf_big_pulley_to_small_pulley_*tf_small_pulley_to_circle_points_;
 
       waypoint_pose_a_[0] = tf_big_pulley_to_circle_points_.P()[0];
@@ -369,7 +371,7 @@ bool TestExample::run()
 
   double safty_margin_;
   safty_margin_ = 0.0007;
-  make_circle_waypoints(1, 0.02 + safty_margin_);
+  make_circle_waypoints(1, 0.03 + safty_margin_);
 
   // std::cout << waypoints_robot_a_.size() << std::endl;
   /*
@@ -495,6 +497,65 @@ bool TestExample::run()
 
     pick_program.push_back(pick_plan_a1);
   }
+
+  tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[1][0], waypoints_robot_a_[1][1], waypoints_robot_a_[1][2]), RPY<>(waypoints_robot_a_[1][3],waypoints_robot_a_[1][4],waypoints_robot_a_[1][5]).toRotation3D()); // RPY
+  tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
+
+
+  temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
+  temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
+
+  Waypoint temp_wp_0 = CartesianWaypoint(temp_pose);
+
+  PlanInstruction pick_plan_a0(temp_wp_0, PlanInstructionType::FREESPACE, "DEFAULT");
+  pick_plan_a0.setDescription("pose_1");
+
+
+
+  tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[2][0], waypoints_robot_a_[2][1], waypoints_robot_a_[2][2]), RPY<>(waypoints_robot_a_[2][3],waypoints_robot_a_[2][4],waypoints_robot_a_[2][5]).toRotation3D()); // RPY
+  tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
+
+
+  temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
+  temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
+
+  Waypoint temp_wp_2 = CartesianWaypoint(temp_pose);
+
+  PlanInstruction pick_plan_a2(temp_wp_2, PlanInstructionType::FREESPACE, "DEFAULT");
+  pick_plan_a2.setDescription("pose_2");
+
+  tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[3][0], waypoints_robot_a_[3][1], waypoints_robot_a_[3][2]), RPY<>(waypoints_robot_a_[3][3],waypoints_robot_a_[3][4],waypoints_robot_a_[3][5]).toRotation3D()); // RPY
+  tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
+
+
+  temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
+  temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
+
+  Waypoint temp_wp_3 = CartesianWaypoint(temp_pose);
+
+  PlanInstruction pick_plan_a3(temp_wp_3, PlanInstructionType::FREESPACE, "DEFAULT");
+  pick_plan_a3.setDescription("pose_3");
+
+
+  tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[4][0], waypoints_robot_a_[4][1], waypoints_robot_a_[4][2]), RPY<>(waypoints_robot_a_[4][3],waypoints_robot_a_[4][4],waypoints_robot_a_[4][5]).toRotation3D()); // RPY
+  tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
+
+
+  temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
+  temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
+
+  Waypoint temp_wp_4 = CartesianWaypoint(temp_pose);
+
+  PlanInstruction pick_plan_a4(temp_wp_4, PlanInstructionType::FREESPACE, "DEFAULT");
+  pick_plan_a4.setDescription("pose_4");
+
+  pick_program.push_back(pick_plan_a0);
+  pick_program.push_back(pick_plan_a2);
+  pick_program.push_back(pick_plan_a3);
+  pick_program.push_back(pick_plan_a4);
+
+
+
   // Create Process Planning Server
   ProcessPlanningServer planning_server(std::make_shared<ROSProcessEnvironmentCache>(monitor_), 10);
   planning_server.loadDefaultProcessPlanners();
@@ -550,128 +611,128 @@ bool TestExample::run()
   /// PLACE ///
   /////////////
 
-  // Get the last move instruction
-  const CompositeInstruction* pick_composite = pick_response.results->cast_const<CompositeInstruction>();
-  const MoveInstruction* pick_final_state = tesseract_planning::getLastMoveInstruction(*pick_composite);
+//  // Get the last move instruction
+//  const CompositeInstruction* pick_composite = pick_response.results->cast_const<CompositeInstruction>();
+//  const MoveInstruction* pick_final_state = tesseract_planning::getLastMoveInstruction(*pick_composite);
+//
+//
+//  // Create Program
+//  CompositeInstruction place_program2("DEFAULT", CompositeInstructionOrder::ORDERED, ManipulatorInfo("ur10e_a"));
+//  PlanInstruction place_start_instruction(pick_final_state->getWaypoint(), PlanInstructionType::START);
+//  place_program2.setStartInstruction(place_start_instruction);
 
+//  tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[1][0], waypoints_robot_a_[1][1], waypoints_robot_a_[1][2]), RPY<>(waypoints_robot_a_[1][3],waypoints_robot_a_[1][4],waypoints_robot_a_[1][5]).toRotation3D()); // RPY
+//  tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
+//
+//
+//  temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
+//  temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
+//
+//  Waypoint temp_wp_0 = CartesianWaypoint(temp_pose);
+//
+//  PlanInstruction pick_plan_a0(temp_wp_0, PlanInstructionType::FREESPACE, "DEFAULT");
+//  pick_plan_a0.setDescription("pose_1");
+//
+//
+//
+//  tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[2][0], waypoints_robot_a_[2][1], waypoints_robot_a_[2][2]), RPY<>(waypoints_robot_a_[2][3],waypoints_robot_a_[2][4],waypoints_robot_a_[2][5]).toRotation3D()); // RPY
+//  tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
+//
+//
+//  temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
+//  temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
+//
+//  Waypoint temp_wp_2 = CartesianWaypoint(temp_pose);
+//
+//  PlanInstruction pick_plan_a2(temp_wp_2, PlanInstructionType::FREESPACE, "DEFAULT");
+//  pick_plan_a2.setDescription("pose_2");
+//
+//  tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[3][0], waypoints_robot_a_[3][1], waypoints_robot_a_[3][2]), RPY<>(waypoints_robot_a_[3][3],waypoints_robot_a_[3][4],waypoints_robot_a_[3][5]).toRotation3D()); // RPY
+//  tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
+//
+//
+//  temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
+//  temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
+//
+//  Waypoint temp_wp_3 = CartesianWaypoint(temp_pose);
+//
+//  PlanInstruction pick_plan_a3(temp_wp_3, PlanInstructionType::FREESPACE, "DEFAULT");
+//  pick_plan_a3.setDescription("pose_3");
+//
+//
+//  tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[4][0], waypoints_robot_a_[4][1], waypoints_robot_a_[4][2]), RPY<>(waypoints_robot_a_[4][3],waypoints_robot_a_[4][4],waypoints_robot_a_[4][5]).toRotation3D()); // RPY
+//  tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
+//
+//
+//  temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
+//  temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
+//
+//  Waypoint temp_wp_4 = CartesianWaypoint(temp_pose);
+//
+//  PlanInstruction pick_plan_a4(temp_wp_4, PlanInstructionType::FREESPACE, "DEFAULT");
+//  pick_plan_a4.setDescription("pose_4");
+//
+//
+//  place_program2.push_back(pick_plan_a0);
+//  place_program2.push_back(pick_plan_a2);
+//  place_program2.push_back(pick_plan_a3);
+//  place_program2.push_back(pick_plan_a4);
 
-  // Create Program
-  CompositeInstruction place_program2("DEFAULT", CompositeInstructionOrder::ORDERED, ManipulatorInfo("ur10e_a"));
-  PlanInstruction place_start_instruction(pick_final_state->getWaypoint(), PlanInstructionType::START);
-  place_program2.setStartInstruction(place_start_instruction);
-
-  tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[1][0], waypoints_robot_a_[1][1], waypoints_robot_a_[1][2]), RPY<>(waypoints_robot_a_[1][3],waypoints_robot_a_[1][4],waypoints_robot_a_[1][5]).toRotation3D()); // RPY
-  tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
-
-
-  temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
-  temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
-
-  Waypoint temp_wp_0 = CartesianWaypoint(temp_pose);
-
-  PlanInstruction pick_plan_a0(temp_wp_0, PlanInstructionType::FREESPACE, "DEFAULT");
-  pick_plan_a0.setDescription("pose_1");
-
-
-
-  tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[2][0], waypoints_robot_a_[2][1], waypoints_robot_a_[2][2]), RPY<>(waypoints_robot_a_[2][3],waypoints_robot_a_[2][4],waypoints_robot_a_[2][5]).toRotation3D()); // RPY
-  tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
-
-
-  temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
-  temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
-
-  Waypoint temp_wp_2 = CartesianWaypoint(temp_pose);
-
-  PlanInstruction pick_plan_a2(temp_wp_2, PlanInstructionType::FREESPACE, "DEFAULT");
-  pick_plan_a2.setDescription("pose_2");
-
-  tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[3][0], waypoints_robot_a_[3][1], waypoints_robot_a_[3][2]), RPY<>(waypoints_robot_a_[3][3],waypoints_robot_a_[3][4],waypoints_robot_a_[3][5]).toRotation3D()); // RPY
-  tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
-
-
-  temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
-  temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
-
-  Waypoint temp_wp_3 = CartesianWaypoint(temp_pose);
-
-  PlanInstruction pick_plan_a3(temp_wp_3, PlanInstructionType::FREESPACE, "DEFAULT");
-  pick_plan_a3.setDescription("pose_3");
-
-
-  tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[4][0], waypoints_robot_a_[4][1], waypoints_robot_a_[4][2]), RPY<>(waypoints_robot_a_[4][3],waypoints_robot_a_[4][4],waypoints_robot_a_[4][5]).toRotation3D()); // RPY
-  tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
-
-
-  temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
-  temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
-
-  Waypoint temp_wp_4 = CartesianWaypoint(temp_pose);
-
-  PlanInstruction pick_plan_a4(temp_wp_4, PlanInstructionType::FREESPACE, "DEFAULT");
-  pick_plan_a4.setDescription("pose_4");
-
-
-  place_program2.push_back(pick_plan_a0);
-  place_program2.push_back(pick_plan_a2);
-  place_program2.push_back(pick_plan_a3);
-  place_program2.push_back(pick_plan_a4);
-
-  // Create Process Planning Server
-  ProcessPlanningServer planning_server2(std::make_shared<ROSProcessEnvironmentCache>(monitor_), 10);
-  planning_server2.loadDefaultProcessPlanners();
-
-
-  // Create TrajOpt Profile
-  auto trajopt_plan_profile2 = std::make_shared<tesseract_planning::TrajOptDefaultPlanProfile>();
-  trajopt_plan_profile2->cartesian_coeff = Eigen::VectorXd::Constant(6, 1, 10);
-
-  auto trajopt_composite_profile2 = std::make_shared<tesseract_planning::TrajOptDefaultCompositeProfile>();
-  trajopt_composite_profile2->smooth_velocities = true;
-  //trajopt_composite_profile2->velocity_coeff =
-  trajopt_composite_profile2->collision_constraint_config.enabled = false;
-  trajopt_composite_profile2->collision_cost_config.safety_margin = 0.001;
-  trajopt_composite_profile2->collision_cost_config.coeff = 0.01;
-
-  auto trajopt_solver_profile2 = std::make_shared<tesseract_planning::TrajOptDefaultSolverProfile>();
-  trajopt_solver_profile2->opt_info.max_iter = 500;
-  trajopt_solver_profile2->convex_solver = sco::ModelType::OSQP;
-
-  // Add profile to Dictionary
-  planning_server2.getProfiles()->addProfile<tesseract_planning::TrajOptPlanProfile>("CARTESIAN", trajopt_plan_profile2);
-  planning_server2.getProfiles()->addProfile<tesseract_planning::TrajOptCompositeProfile>("DEFAULT",
-      trajopt_composite_profile2);
-  planning_server2.getProfiles()->addProfile<tesseract_planning::TrajOptSolverProfile>("DEFAULT",
-      trajopt_solver_profile2);
-
-  ROS_INFO("circle_plan");
-
-  // Create Process Planning Request
-  ProcessPlanningRequest pick_request2;
-  pick_request2.name = tesseract_planning::process_planner_names::TRAJOPT_PLANNER_NAME;
-  pick_request2.instructions = Instruction(place_program2);
-
-  // Print Diagnostics
-  pick_request2.instructions.print("Program: ");
-
-
-  // Solve process plan
-  ProcessPlanningFuture pick_response2 = planning_server2.run(pick_request2);
-  planning_server2.waitForAll();
-
-  // Plot Process Trajectory
-  if (rviz_ && plotter != nullptr && plotter->isConnected())
-  {
-    //plotter->waitForInput();
-    const auto* cp = pick_response2.results->cast_const<CompositeInstruction>();
-    tesseract_common::Toolpath toolpath2 = tesseract_planning::toToolpath(*cp, env_);
-    tesseract_common::JointTrajectory trajectory2 = tesseract_planning::toJointTrajectory(*cp);
-    plotter->plotMarker(ToolpathMarker(toolpath2));
-    plotter->plotTrajectory(trajectory2, env_->getStateSolver());
-  }
-
-  if (rviz_)
-    plotter->waitForInput();
+//  // Create Process Planning Server
+//  ProcessPlanningServer planning_server2(std::make_shared<ROSProcessEnvironmentCache>(monitor_), 10);
+//  planning_server2.loadDefaultProcessPlanners();
+//
+//
+//  // Create TrajOpt Profile
+//  auto trajopt_plan_profile2 = std::make_shared<tesseract_planning::TrajOptDefaultPlanProfile>();
+//  trajopt_plan_profile2->cartesian_coeff = Eigen::VectorXd::Constant(6, 1, 10);
+//
+//  auto trajopt_composite_profile2 = std::make_shared<tesseract_planning::TrajOptDefaultCompositeProfile>();
+//  trajopt_composite_profile2->smooth_velocities = true;
+//  //trajopt_composite_profile2->velocity_coeff =
+//  trajopt_composite_profile2->collision_constraint_config.enabled = false;
+//  trajopt_composite_profile2->collision_cost_config.safety_margin = 0.001;
+//  trajopt_composite_profile2->collision_cost_config.coeff = 0.01;
+//
+//  auto trajopt_solver_profile2 = std::make_shared<tesseract_planning::TrajOptDefaultSolverProfile>();
+//  trajopt_solver_profile2->opt_info.max_iter = 500;
+//  trajopt_solver_profile2->convex_solver = sco::ModelType::OSQP;
+//
+//  // Add profile to Dictionary
+//  planning_server2.getProfiles()->addProfile<tesseract_planning::TrajOptPlanProfile>("FREESPACE", trajopt_plan_profile2);
+//  planning_server2.getProfiles()->addProfile<tesseract_planning::TrajOptCompositeProfile>("DEFAULT",
+//      trajopt_composite_profile2);
+//  planning_server2.getProfiles()->addProfile<tesseract_planning::TrajOptSolverProfile>("DEFAULT",
+//      trajopt_solver_profile2);
+//
+//  ROS_INFO("circle_plan");
+//
+//  // Create Process Planning Request
+//  ProcessPlanningRequest pick_request2;
+//  pick_request2.name = tesseract_planning::process_planner_names::TRAJOPT_PLANNER_NAME;
+//  pick_request2.instructions = Instruction(place_program2);
+//
+//  // Print Diagnostics
+//  pick_request2.instructions.print("Program: ");
+//
+//
+//  // Solve process plan
+//  ProcessPlanningFuture pick_response2 = planning_server2.run(pick_request2);
+//  planning_server2.waitForAll();
+//
+//  // Plot Process Trajectory
+//  if (rviz_ && plotter != nullptr && plotter->isConnected())
+//  {
+//    //plotter->waitForInput();
+//    const auto* cp = pick_response2.results->cast_const<CompositeInstruction>();
+//    tesseract_common::Toolpath toolpath2 = tesseract_planning::toToolpath(*cp, env_);
+//    tesseract_common::JointTrajectory trajectory2 = tesseract_planning::toJointTrajectory(*cp);
+//    plotter->plotMarker(ToolpathMarker(toolpath2));
+//    plotter->plotTrajectory(trajectory2, env_->getStateSolver());
+//  }
+//
+//  if (rviz_)
+//    plotter->waitForInput();
 
   ROS_INFO("Done");
   return true;
