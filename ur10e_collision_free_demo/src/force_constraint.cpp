@@ -5,300 +5,103 @@
  *      Author: yik
  */
 #include <ur10e_collision_free_demo/force_constraint.h>
-#include "sco/modeling_utils.hpp"
-#include "sco/expr_ops.hpp"
-#include "sco/expr_vec_ops.hpp"
-#include "sco/expr_op_overloads.hpp"
-#include <boost/foreach.hpp>
-#include "utils/eigen_conversions.hpp"
-#include "trajopt/problem_description.hpp"
+#include <iostream>
 
 
 using namespace util;
 using namespace Eigen;
-using namespace std;
-using namespace sco;
-
-const double footpolydata[8] = {
-    0.17939, 0.062707,
-    0.17939, -0.061646,
-    -0.08246, -0.061646,
-    -0.08246, 0.061646};
-MatrixX2d local_aabb_poly = Map<const MatrixX2d>(footpolydata,4,2);
-
-/**
-px,py,pz=aabb.pos()
-ex,ey,ez=aabb.extents()
-np.array([(px+xsgn*ex,py+ysgn*ey,pz) for xsgn in (-1,1) for ysgn in (-1,1)])
- *
- */
-const double footbottomdata[12] = {
-    0.17939  ,  0.062707 , -0.0353015,
-    0.17939  , -0.061646 , -0.0353015,
-    -0.08246  , -0.061646 , -0.0353015,
-    -0.08246  ,  0.062707 , -0.0353015
-};
-MatrixX3d footbottompoints = Map<const MatrixX3d>(footbottomdata, 4, 3);
 
 
-ZMPConstraint::ZMPConstraint(Eigen::VectorXd joint_rads, const MatrixX2d& hullpts, const sco::VarVector& vars) :
-    m_joint_rads(joint_rads), m_vars(vars), m_pts(hullpts) {
+VectorXd ForceConstraint::operator()(const VectorXd& current_joints_pos) const
+{
+  static Eigen::VectorXd previous_joints_pos(6);
+  //initial joint pose
+  Eigen::VectorXd joint_init_pos(6);
+  joint_init_pos(0) = 2.97326;
+  joint_init_pos(1) = -1.6538;
+  joint_init_pos(2) = -2.33488;
+  joint_init_pos(3) = -2.28384;
+  joint_init_pos(4) = -2.53001;
+  joint_init_pos(5) = -3.13221;
 
-  // find the equations representing force x,y,z forces
-  //PolygonToEquations(m_pts, m_ab, m_c);
+  std::vector<std::string> joint_names;
+  joint_names.push_back("a_shoulder_pan_joint");
+  joint_names.push_back("a_shoulder_lift_joint");
+  joint_names.push_back("a_elbow_joint");
+  joint_names.push_back("a_wrist_1_joint");
+  joint_names.push_back("a_wrist_2_joint");
+  joint_names.push_back("a_wrist_3_joint");
+
+  std::string link = "a_final_link_2";
+  Eigen::Isometry3d current_pose = env_->getCurrentState()->link_transforms.at(link);
+  Eigen::Isometry3d initial_pose_;
+
+  auto kin = env_->getManipulatorManager()->getFwdKinematicSolver("ur10e_a");
+  kin->calcFwdKin(initial_pose_, joint_init_pos);
+  kin->calcFwdKin(current_pose, current_joints_pos);
+
+  // constraint function
+
+  double spring_constant_k_ = 5;
+  double force_magnitude_ = 0;
+  double desired_force_magnitude_ = 9;
+  static Eigen::VectorXd violation_joints(6);
+  violation_joints << 0,0,0,0,0,0;
+
+  static std::vector<double> force_unit_vector_;
+
+  force_magnitude_ = sqrt(spring_constant_k_*spring_constant_k_*(pow(2,initial_pose_.translation()(0) - current_pose.translation()(0))
+      + pow(2,initial_pose_.translation()(1) - current_pose.translation()(1))
+      + pow(2,initial_pose_.translation()(2) - current_pose.translation()(2))));
+
+  force_unit_vector_.push_back(initial_pose_.translation()(0) - current_pose.translation()(0));
+  force_unit_vector_.push_back(initial_pose_.translation()(1) - current_pose.translation()(1));
+  force_unit_vector_.push_back(initial_pose_.translation()(2) - current_pose.translation()(2));
+
+  //    for(long unsigned int num_inner_ = 0; num_inner_ < 3; num_inner_ ++)
+  //    {
+  //      current_object_force_torque_vector_[num_+1][num_inner_]=force_unit_vector_[num_inner_]*force_magnitude_;
+  //    }
+  //check
+  std::cout << force_magnitude_ << std::endl;
+  //printf("force_magnitude_ :: %f  ", force_magnitude_);
+  force_unit_vector_.clear();
+
+  if(force_magnitude_ - desired_force_magnitude_ >= -0.5 && force_magnitude_ - desired_force_magnitude_ <= 0.5)
+  {
+    violation_joints << 0,0,0,0,0,0;
+    //previous_joints_pos = current_joints_pos;
+    return violation_joints;
+  }
+  else
+  {
+    double temp_a = force_magnitude_ - desired_force_magnitude_ ;
+    violation_joints << temp_a,temp_a,temp_a,temp_a,temp_a,temp_a;
+    return violation_joints;
+  }
 }
 
-DblVec ZMPConstraint::value(const DblVec& x) { // force values
+void ForceConstraint::Plot(const tesseract_visualization::Visualization::Ptr& plotter, const VectorXd& dof_vals)
+{
+//  Isometry3d cur_pose;
+//  manip_->calcFwdKin(cur_pose, dof_vals, kin_link_->link_name);
+//
+//  cur_pose = world_to_base_ * cur_pose * kin_link_->transform * tcp_;
+//
+//  Isometry3d target = pose_inv_.inverse();
 
-  return toDblVec(m_ab * xy + m_c);
+//  tesseract_visualization::AxisMarker m1(cur_pose);
+//  m1.setScale(Eigen::Vector3d::Constant(0.05));
+//  plotter->plotMarker(m1);
+//
+//  tesseract_visualization::AxisMarker m2(target);
+//  m2.setScale(Eigen::Vector3d::Constant(0.05));
+//  plotter->plotMarker(m2);
+//
+//  tesseract_visualization::ArrowMarker m3(cur_pose.translation(), target.translation());
+//  m3.material = std::make_shared<tesseract_scene_graph::Material>("cart_pose_error_material");
+//  m3.material->color << 1, 0, 1, 1;
+//  plotter->plotMarker(m3);
 }
-
-ConvexConstraintsPtr ZMPConstraint::convex(const DblVec& x, Model* model) {
-  DblVec curvals = getDblVec(x, m_vars);
-  m_rad->SetDOFValues(curvals);
-  DblMatrix jacmoment = DblMatrix::Zero(3, curvals.size());
-  OR::Vector moment(0,0,0);
-  float totalmass = 0;
-  BOOST_FOREACH(const KinBody::LinkPtr& link, m_rad->GetRobot()->GetLinks()) {
-    if (!link->GetGeometries().empty()) {
-      OR::Vector cm = link->GetGlobalCOM();
-      moment += cm * link->GetMass();
-      jacmoment += m_rad->PositionJacobian(link->GetIndex(), cm) * link->GetMass();
-      totalmass += link->GetMass();
-    }
-  }
-  moment /= totalmass;
-  jacmoment /= totalmass;
-
-  AffExpr x_expr = AffExpr(moment.x) + varDot(jacmoment.row(0), m_vars) - jacmoment.row(0).dot(toVectorXd(curvals));
-  AffExpr y_expr = AffExpr(moment.y) + varDot(jacmoment.row(1), m_vars) - jacmoment.row(1).dot(toVectorXd(curvals));
-
-  ConvexConstraintsPtr out(new ConvexConstraints(model));
-  for (int i=0; i < m_ab.rows(); ++i) {
-    out->addIneqCnt(m_ab(i,0) * x_expr + m_ab(i,1) * y_expr + m_c(i));
-  }
-  return out;
-}
-
-void ZMPConstraint::Plot(const DblVec& x, OR::EnvironmentBase& env, std::vector<OR::GraphHandlePtr>& handles) {
-  Matrix<float, Dynamic, 3, RowMajor> xyz(m_ab.rows()*2, 3);
-  xyz.col(2).setZero();
-  int npts = m_pts.rows();
-  for (int i=0; i < npts; ++i) {
-    xyz(2*i,0) = m_pts(i,0);
-    xyz(2*i,1) = m_pts(i,1);
-    xyz(2*i+1,0) = m_pts((i+1)%npts,0);
-    xyz(2*i+1,1) = m_pts((i+1)%npts,1);
-  }
-  handles.push_back(env.drawlinelist(xyz.data(), xyz.rows(), sizeof(float)*3, 4, OR::RaveVector<float>(1,0,0,1)));
-
-  m_rad->SetDOFValues(getDblVec(x,m_vars));
-  OR::Vector moment(0,0,0);
-  float totalmass = 0;
-  BOOST_FOREACH(const KinBody::LinkPtr& link, m_rad->GetRobot()->GetLinks()) {
-    if (!link->GetGeometries().empty()) {
-      moment += link->GetGlobalCOM() * link->GetMass();
-      totalmass += link->GetMass();
-    }
-  }
-  moment /= totalmass;
-  OR::Vector moment_ground = moment; moment_ground.z = 0;
-  handles.push_back(env.drawarrow(moment, moment_ground, .005, OR::RaveVector<float>(1,0,0,1)));
-}
-
-struct StaticTorqueCostCalc : public VectorOfVector {
-  RobotAndDOFPtr m_rad;
-  StaticTorqueCostCalc(const RobotAndDOFPtr rad) : m_rad(rad) {}
-  VectorXd operator()(const VectorXd& x) const {
-    m_rad->SetDOFValues(toDblVec(x));
-    VectorXd out = VectorXd::Zero(m_rad->GetDOF());
-    BOOST_FOREACH(const KinBody::LinkPtr& link, m_rad->GetRobot()->GetLinks()) {
-      if (!link->GetGeometries().empty()) {
-        OR::Vector cm = link->GetGlobalCOM();
-        DblMatrix jac = m_rad->PositionJacobian(link->GetIndex(), cm) * link->GetMass();
-        out += jac.row(2).transpose();
-      }
-    }
-    return out;
-  }
-};
-
-StaticTorqueCost::StaticTorqueCost(RobotAndDOFPtr rad, const VarVector& vars, double coeff) :
-  CostFromErrFunc(VectorOfVectorPtr(new StaticTorqueCostCalc(rad)), vars, VectorXd::Ones(vars.size())*coeff,
-    SQUARED,  "static_torque") {
-}
-
-struct PECalc : public VectorOfVector {
-  RobotAndDOFPtr m_rad;
-  PECalc(const RobotAndDOFPtr rad) : m_rad(rad) {}
-  VectorXd operator()(const VectorXd& x) const {
-    m_rad->SetDOFValues(toDblVec(x));
-    VectorXd out = VectorXd::Zero(1);
-    BOOST_FOREACH(const KinBody::LinkPtr& link, m_rad->GetRobot()->GetLinks()) {
-      if (!link->GetGeometries().empty()) {
-        OR::Vector cm = link->GetGlobalCOM();
-        out(0) += cm.z;
-      }
-    }
-    return out;
-  }
-};
-
-PECost::PECost(RobotAndDOFPtr rad, const VarVector& vars, double coeff) :
-  CostFromErrFunc(VectorOfVectorPtr(new PECalc(rad)), vars, VectorXd::Ones(1)*coeff,
-    SQUARED,  "PE") {
-}
-
-inline OpenRAVE::Vector toRaveVector(const Vector3d& x) {
-  return OpenRAVE::Vector(x[0], x[1], x[2]);
-}
-
-struct FootHeightCalc : public VectorOfVector {
-  RobotAndDOFPtr m_rad;
-  KinBody::LinkPtr m_link;
-  double m_height;
-  FootHeightCalc(const RobotAndDOFPtr rad, KinBody::LinkPtr link, double height) : m_rad(rad), m_link(link), m_height(height) {}
-  VectorXd operator()(const VectorXd& x) const {
-    m_rad->SetDOFValues(toDblVec(x));
-    OpenRAVE::Transform T = m_link->GetTransform();
-    Eigen::Vector4d out(
-        m_height - (T * toRaveVector(footbottompoints.row(0))).z,
-        m_height - (T * toRaveVector(footbottompoints.row(1))).z,
-        m_height - (T * toRaveVector(footbottompoints.row(2))).z,
-        m_height - (T * toRaveVector(footbottompoints.row(3))).z);
-    cout << out.transpose() << endl;
-    cout << footbottompoints.row(0) << endl;
-    return out;
-  }
-};
-
-FootHeightConstraint::FootHeightConstraint(RobotAndDOFPtr rad, KinBody::LinkPtr link, double height, const VarVector& vars) :
-  ConstraintFromFunc(VectorOfVectorPtr(new FootHeightCalc(rad, link, height)), vars, VectorXd::Ones(1), INEQ,  "FootHeight") {
-}
-
-
-extern ProblemConstructionInfo* gPCI;
-
-
-struct PECostInfo : public TermInfo, public MakesCost {
-  double coeff;
-  int timestep;
-  void fromJson(const Value& v) {
-    FAIL_IF_FALSE(v.isMember("params"));
-    const Value& params = v["params"];
-    childFromJson(params, timestep, "timestep");
-    childFromJson(params, coeff, "coeff");
-    int n_steps = gPCI->basic_info.n_steps;
-    FAIL_IF_FALSE((timestep >= 0) && (timestep < n_steps));
-  }
-  void hatch(TrajOptProb& prob) {
-    prob.addCost(CostPtr(new PECost(boost::dynamic_pointer_cast<RobotAndDOF>(prob.GetRAD()), prob.GetVarRow(timestep), coeff)));
-    prob.getCosts().back()->setName(name);
-  }
-  DEFINE_CREATE(PECostInfo)
-};
-struct StaticTorqueCostInfo : public TermInfo, public MakesCost {
-  double coeff;
-  int timestep;
-  void fromJson(const Value& v) {
-    FAIL_IF_FALSE(v.isMember("params"));
-    const Value& params = v["params"];
-    childFromJson(params, timestep, "timestep");
-    childFromJson(params, coeff, "coeff");
-    int n_steps = gPCI->basic_info.n_steps;
-    FAIL_IF_FALSE((timestep >= 0) && (timestep < n_steps));
-  }
-  void hatch(TrajOptProb& prob) {
-    prob.addCost(CostPtr(new StaticTorqueCost(boost::dynamic_pointer_cast<RobotAndDOF>(prob.GetRAD()), prob.GetVarRow(timestep), coeff)));
-    prob.getCosts().back()->setName(name);
-  }
-  DEFINE_CREATE(StaticTorqueCostInfo)
-};
-
-template <typename MatrixT>
-MatrixT concat0(const MatrixT& x, const MatrixT& y) {
-  MatrixT out(x.rows() + y.rows(), x.cols());
-  out.topRows(x.rows()) = x;
-  out.bottomRows(y.rows()) = y;
-  return out;
-}
-
-
-MatrixX2d GetFootPoly(const KinBody::Link& link) {
-  OpenRAVE::Vector v = link.GetTransform().trans;
-  v.z = 0;
-  return local_aabb_poly.rowwise() + Vector2d(v.x, v.y).transpose();
-}
-MatrixX2d GetFeetPoly(const vector<KinBody::LinkPtr>& links) {
-  FAIL_IF_FALSE(links.size() > 0);
-  MatrixX2d allpoly = GetFootPoly(*links[0]);
-  for (int i=1; i < links.size(); ++i) {
-    allpoly = concat0(allpoly, GetFootPoly(*links[i]));
-  }
-  return hull2d(allpoly);
-}
-
-
-struct ZMPConstraintInfo : public TermInfo, public MakesConstraint{
-  int timestep;
-  vector<string> planted_link_names;
-  void fromJson(const Value& v) {
-    FAIL_IF_FALSE(v.isMember("params"));
-    const Value& params = v["params"];
-    childFromJson(params, timestep, "timestep");
-    int n_steps = gPCI->basic_info.n_steps;
-    FAIL_IF_FALSE((timestep >= 0) && (timestep < n_steps));
-    childFromJson(params, planted_link_names, "planted_links");
-  }
-  void hatch(TrajOptProb& prob) {
-    vector<KinBody::LinkPtr> planted_links;
-    RobotAndDOFPtr rad = boost::dynamic_pointer_cast<RobotAndDOF>(prob.GetRAD());
-    BOOST_FOREACH(const string& linkname, planted_link_names) {
-      KinBody::LinkPtr link = rad->GetRobot()->GetLink(linkname);
-      if (!link) {
-        PRINT_AND_THROW(boost::format("invalid link name: %s")%linkname);
-      }
-      planted_links.push_back(link);
-    }
-    prob.addConstraint(ConstraintPtr(new ZMPConstraint(rad, GetFeetPoly(planted_links), prob.GetVarRow(timestep))));
-    prob.getIneqConstraints().back()->setName(name);
-  }
-  DEFINE_CREATE(ZMPConstraintInfo)
-};
-
-struct FootHeightCntInfo : public TermInfo, public MakesConstraint {
-  int timestep;
-  double height;
-  string link_name;
-  void fromJson(const Value& v) {
-    FAIL_IF_FALSE(v.isMember("params"));
-    const Value& params = v["params"];
-    childFromJson(params, timestep, "timestep");
-    childFromJson(params, height, "height");
-    int n_steps = gPCI->basic_info.n_steps;
-    FAIL_IF_FALSE((timestep >= 0) && (timestep < n_steps));
-    childFromJson(params, link_name, "link");
-  }
-  void hatch(TrajOptProb& prob) {
-    RobotAndDOFPtr rad = boost::dynamic_pointer_cast<RobotAndDOF>(prob.GetRAD());
-    KinBody::LinkPtr link = rad->GetRobot()->GetLink(link_name);
-    if (!link) {
-      PRINT_AND_THROW(boost::format("invalid link name: %s")%link_name);
-    }
-    prob.addConstraint(ConstraintPtr(new FootHeightConstraint(rad, link, height, prob.GetVarRow(timestep))));
-    prob.getIneqConstraints().back()->setName(name);
-  }
-  DEFINE_CREATE(FootHeightCntInfo)
-};
-
-
-
-TRAJOPT_API void RegisterHumanoidCostsAndCnts() {
-  TermInfo::RegisterMaker("potential_energy", &PECostInfo::create);
-  TermInfo::RegisterMaker("static_torque", &StaticTorqueCostInfo::create);
-  TermInfo::RegisterMaker("zmp", &ZMPConstraintInfo::create);
-  TermInfo::RegisterMaker("foot_height", &FootHeightCntInfo::create);
-}
-
 
 

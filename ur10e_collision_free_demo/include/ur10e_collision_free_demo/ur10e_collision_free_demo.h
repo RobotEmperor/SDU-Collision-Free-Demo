@@ -16,6 +16,7 @@ TESSERACT_COMMON_IGNORE_WARNINGS_POP
 
 #include <tesseract_common/types.h>
 #include <ur10e_collision_free_demo/example.h>
+#include <ur10e_collision_free_demo/force_constraint.h>
 #include <rw/math.hpp>
 
 #include <tesseract_rosutils/plotting.h>
@@ -43,6 +44,7 @@ TRAJOPT_IGNORE_WARNINGS_PUSH
 #include <tesseract_scene_graph/utils.h>
 TRAJOPT_IGNORE_WARNINGS_POP
 
+#include <trajopt/kinematic_terms.hpp>
 #include <trajopt/common.hpp>
 #include <trajopt/plot_callback.hpp>
 #include <trajopt/problem_description.hpp>
@@ -93,48 +95,6 @@ class TestExample : public Example
 
     std::vector<double> waypoint_pose_a_;
     std::vector<double> waypoint_pose_b_;
-
-
-
-    //void addTotalTimeCost(trajopt::ProblemConstructionInfo& pci, double coeff);
-
-    /**
-     * @brief Adds a single waypoint at the desired pose
-     * @param pci - The trajopt problem construction info to which the cost is added
-     * @param pose - The target pose
-     * @param time_step - Time step at which the cost applies
-     */
-    void addSingleWaypoint(trajopt::ProblemConstructionInfo& pci,
-        Eigen::Isometry3d pose,
-        int time_step);
-
-    /**
-     * @brief Adds a linear move to the problem construction info
-     * @param pci - The trajopt problem construction info to which the move is added
-     * @param start_pose - The starting pose of the linear move
-     * @param end_pose - The end pose of the linear move
-     * @param num_steps -  Number of steps for the move.
-     * @param first_time_step - Time step at which the move is added
-     */
-    void addLinearMotion(trajopt::ProblemConstructionInfo& pci,
-        Eigen::Isometry3d start_pose,
-        Eigen::Isometry3d end_pose,
-        int num_steps,
-        int first_time_step);
-
-    /**
-     * @brief Generates a trajopt problem for a "pick" move
-     * Consists of 2 phases - a free space move to approach_pose and a linear move to final_pose
-     * @param approach_pose - Pose moved to prior to picking
-     * @param final_pose - Pose moved to for the pick operation
-     * @param steps_per_phase - Number of steps per phase. Total move is steps_per_phase*2
-     * @return
-     */
-    trajopt::TrajOptProb::Ptr generatePickProblem(Eigen::Isometry3d& approach_pose,
-        Eigen::Isometry3d& final_pose,
-        int steps_per_phase);
-
-    Eigen::VectorXd force_constraint_func(const Eigen::VectorXd& current_joints_pos);
 
 };
 
