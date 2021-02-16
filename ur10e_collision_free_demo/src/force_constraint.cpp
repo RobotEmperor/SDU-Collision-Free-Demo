@@ -42,22 +42,19 @@ VectorXd ForceConstraint::operator()(const VectorXd& current_joints_pos) const
 
   // constraint function
 
-  double spring_constant_k_ = 5;
+  double spring_constant_k_ = 70;
   double force_magnitude_ = 0;
-  double desired_force_magnitude_ = 9;
+  double desired_force_magnitude_ = 10;
   static Eigen::VectorXd violation_joints(6);
   violation_joints << 0,0,0,0,0,0;
 
-  static std::vector<double> force_unit_vector_;
+  static std::vector<double> force_vector_;
 
-  force_magnitude_ = sqrt(spring_constant_k_*spring_constant_k_*(pow(2,initial_pose_.translation()(0) - current_pose.translation()(0))
-      + pow(2,initial_pose_.translation()(1) - current_pose.translation()(1))
-      + pow(2,initial_pose_.translation()(2) - current_pose.translation()(2))));
+  force_vector_.push_back(spring_constant_k_*(initial_pose_.translation()(0) - current_pose.translation()(0)));
+  force_vector_.push_back(spring_constant_k_*(initial_pose_.translation()(1) - current_pose.translation()(1)));
+  force_vector_.push_back(spring_constant_k_*(initial_pose_.translation()(2) - current_pose.translation()(2)));
 
-  force_unit_vector_.push_back(initial_pose_.translation()(0) - current_pose.translation()(0));
-  force_unit_vector_.push_back(initial_pose_.translation()(1) - current_pose.translation()(1));
-  force_unit_vector_.push_back(initial_pose_.translation()(2) - current_pose.translation()(2));
-
+  force_magnitude_ = sqrt((pow(2,force_vector_[0])) + pow(2,force_vector_[1])) + pow(2,(force_vector_[2]));
   //    for(long unsigned int num_inner_ = 0; num_inner_ < 3; num_inner_ ++)
   //    {
   //      current_object_force_torque_vector_[num_+1][num_inner_]=force_unit_vector_[num_inner_]*force_magnitude_;
@@ -65,9 +62,9 @@ VectorXd ForceConstraint::operator()(const VectorXd& current_joints_pos) const
   //check
   std::cout << force_magnitude_ << std::endl;
   //printf("force_magnitude_ :: %f  ", force_magnitude_);
-  force_unit_vector_.clear();
+  force_vector_.clear();
 
-  if(force_magnitude_ - desired_force_magnitude_ >= -0.5 && force_magnitude_ - desired_force_magnitude_ <= 0.5)
+  if(force_magnitude_ - desired_force_magnitude_ >= -1 && force_magnitude_ - desired_force_magnitude_ <= 1)
   {
     violation_joints << 0,0,0,0,0,0;
     //previous_joints_pos = current_joints_pos;
