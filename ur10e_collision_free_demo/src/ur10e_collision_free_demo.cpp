@@ -34,15 +34,15 @@ static const double LONGEST_VALID_SEGMENT_LENGTH = 0.005;
 namespace online_planning_test
 {
 TestExample::TestExample(const ros::NodeHandle& nh, bool plotting, bool rviz)
-                    : Example(plotting, rviz), nh_(nh)
-                      {
+                            : Example(plotting, rviz), nh_(nh)
+                              {
   // total waypoints
   waypoints_robot_a_.clear();
   waypoints_robot_b_.clear();
 
   waypoint_pose_a_.resize(6);
   waypoint_pose_b_.resize(6);
-                      }
+                              }
 void TestExample::make_circle_waypoints(int direction_, double radious_)
 {
   double x_,y_;
@@ -280,6 +280,9 @@ bool TestExample::run()
 
   pick_program.setStartInstruction(start_instruction);
 
+  //  Waypoint pick_swp_test = StateWaypoint(joint_names, joint_pos);
+  //  PlanInstruction stay_instruction(pick_swp_test, PlanInstructionType::FREESPACE, "DEFAULT");
+  //  stay_instruction.setDescription("pose_stay");
 
 
   //path planning
@@ -293,24 +296,24 @@ bool TestExample::run()
   tf_world_to_a_base_link_ = Transform3D<> (Vector3D<>(0, 0, 0.05), RPY<> (180*DEGREE2RADIAN,0,0).toRotation3D()); // RPY
   tf_a_base_link_to_big_pulley_ = Transform3D<> (Vector3D<>(-0.739757210413974, 0.07993900394775277, 0.2449995438351456), EAA<>(-0.7217029684216122, -1.7591780460014375, 1.7685571865188172).toRotation3D()); // RPY
 
-  for(int num = 0; num < 2; num ++)
-  {
-
-    tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[num][0], waypoints_robot_a_[num][1], waypoints_robot_a_[num][2]), RPY<>(waypoints_robot_a_[num][3],waypoints_robot_a_[num][4],waypoints_robot_a_[num][5]).toRotation3D()); // RPY
-    tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
-
-
-    temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
-    temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
-
-    Waypoint temp_wp = CartesianWaypoint(temp_pose);
-
-    PlanInstruction pick_plan_a1(temp_wp, PlanInstructionType::FREESPACE, "DEFAULT");
-    pick_plan_a1.setDescription("pose_1");
-
-
-    pick_program.push_back(pick_plan_a1);
-  }
+  //  for(int num = 0; num < 1; num ++)
+  //  {
+  //
+  //    tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[num][0], waypoints_robot_a_[num][1], waypoints_robot_a_[num][2]), RPY<>(waypoints_robot_a_[num][3],waypoints_robot_a_[num][4],waypoints_robot_a_[num][5]).toRotation3D()); // RPY
+  //    tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
+  //
+  //
+  //    temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
+  //    temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
+  //
+  //    Waypoint temp_wp = CartesianWaypoint(temp_pose);
+  //
+  //    PlanInstruction pick_plan_a1(temp_wp, PlanInstructionType::FREESPACE, "DEFAULT");
+  //    pick_plan_a1.setDescription("pose_1");
+  //
+  //
+  //    pick_program.push_back(pick_plan_a1);
+  //  }
 
   tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[1][0], waypoints_robot_a_[1][1], waypoints_robot_a_[1][2]), RPY<>(waypoints_robot_a_[1][3],waypoints_robot_a_[1][4],waypoints_robot_a_[1][5]).toRotation3D()); // RPY
   tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
@@ -363,9 +366,10 @@ bool TestExample::run()
   PlanInstruction pick_plan_a4(temp_wp_4, PlanInstructionType::FREESPACE, "DEFAULT");
   pick_plan_a4.setDescription("pose_4");
 
+
   pick_program.push_back(pick_plan_a0);
-  //pick_program.push_back(pick_plan_a2);
-  //pick_program.push_back(pick_plan_a3);
+  pick_program.push_back(pick_plan_a2);
+  pick_program.push_back(pick_plan_a3);
   pick_program.push_back(pick_plan_a4);
 
 
@@ -377,17 +381,16 @@ bool TestExample::run()
   // Create TrajOpt Profile
   auto trajopt_plan_profile = std::make_shared<tesseract_planning::TrajOptDefaultPlanProfile>();
   trajopt_plan_profile->cartesian_coeff = Eigen::VectorXd::Constant(6, 1, 10);
-//
+  //
   ForceConstraint f(env_);
   std::function<Eigen::VectorXd(const Eigen::VectorXd&)> temp_function = f;
   //temp_function = force_constraint_func;
   sco::VectorOfVector::func temp_a;
   temp_a = temp_function;
-  //temp_a = force_constraint_func;
-  //sco::MatrixOfVector::func,
-  sco::ConstraintType a = sco::ConstraintType::INEQ;
-  Eigen::VectorXd error_coeff(6);
-  error_coeff << 0.1,0.1,0.1,0.1,0.1,0.1 ;
+
+  sco::ConstraintType a = sco::ConstraintType::EQ;
+  Eigen::VectorXd error_coeff(1);
+  error_coeff << 0.5 ;
 
   std::tuple<sco::VectorOfVector::func, sco::MatrixOfVector::func, sco::ConstraintType, Eigen::VectorXd> temp_tuple(temp_a,nullptr,a,error_coeff);
 
@@ -397,7 +400,7 @@ bool TestExample::run()
 
   constraint_error_functions_.push_back(temp_tuple);
 
-  trajopt_plan_profile->constraint_error_functions = constraint_error_functions_;
+  //trajopt_plan_profile->constraint_error_functions = constraint_error_functions_;
 
   auto trajopt_composite_profile = std::make_shared<tesseract_planning::TrajOptDefaultCompositeProfile>();
   //trajopt_composite_profile->collision_constraint_config.type=trajopt::CollisionEvaluatorType::CAST_CONTINUOUS;
@@ -464,9 +467,9 @@ bool TestExample::run()
   // close to the pulley
   waypoint_pose_b_[0] = 0;
   waypoint_pose_b_[1] = 0;
-  waypoint_pose_b_[2] = -0.02;
+  waypoint_pose_b_[2] = -0.025;
   waypoint_pose_b_[3] = 0*DEGREE2RADIAN;
-  waypoint_pose_b_[4] = 0;
+  waypoint_pose_b_[4] = -25*DEGREE2RADIAN;
   waypoint_pose_b_[5] = 0;
 
   waypoints_robot_b_.push_back(waypoint_pose_b_);
@@ -604,33 +607,33 @@ bool TestExample::run()
   auto trajopt_plan_profile_b = std::make_shared<tesseract_planning::TrajOptDefaultPlanProfile>();
   trajopt_plan_profile_b->cartesian_coeff = Eigen::VectorXd::Constant(6, 1, 10);
 
-//  ForceConstraint f_b(env_);
-//  std::function<Eigen::VectorXd(const Eigen::VectorXd&)> temp_function_b = f_b;
-//  //temp_function = force_constraint_func;
-//  sco::VectorOfVector::func temp_b;
-//  temp_b = temp_function_b;
-//  //temp_a = force_constraint_func;
-//  //sco::MatrixOfVector::func,
-//  sco::ConstraintType b = sco::ConstraintType::INEQ;
-//  Eigen::VectorXd error_coeff_b(6);
-//  error_coeff_b << 0.1,0.1,0.1,0.1,0.1,0.1 ;
-//
-//  std::tuple<sco::VectorOfVector::func, sco::MatrixOfVector::func, sco::ConstraintType, Eigen::VectorXd> temp_tuple_b(temp_b,nullptr,b,error_coeff_b);
-//
-//
-//  std::vector<std::tuple<sco::VectorOfVector::func, sco::MatrixOfVector::func, sco::ConstraintType, Eigen::VectorXd>>
-//  constraint_error_functions_b_;
-//
-//  constraint_error_functions_b_.push_back(temp_tuple_b);
-//
-//  trajopt_plan_profile->constraint_error_functions = constraint_error_functions_b_;
+  ForceConstraint f_b(env_);
+  f_b.set_robot_(1);
+  std::function<Eigen::VectorXd(const Eigen::VectorXd&)> temp_function_b = f_b;
+  //temp_function = force_constraint_func;
+  sco::VectorOfVector::func temp_b;
+  temp_b = temp_function_b;
+  //temp_a = force_constraint_func;
+  //sco::MatrixOfVector::func,
+  sco::ConstraintType b = sco::ConstraintType::EQ;
+  Eigen::VectorXd error_coeff_b(1);
+  error_coeff_b << 0.5 ;
+
+  std::tuple<sco::VectorOfVector::func, sco::MatrixOfVector::func, sco::ConstraintType, Eigen::VectorXd> temp_tuple_b(temp_b,nullptr,b,error_coeff_b);
+
+
+  std::vector<std::tuple<sco::VectorOfVector::func, sco::MatrixOfVector::func, sco::ConstraintType, Eigen::VectorXd>>
+  constraint_error_functions_b_;
+
+  constraint_error_functions_b_.push_back(temp_tuple_b);
+
 
   auto trajopt_composite_profile_b = std::make_shared<tesseract_planning::TrajOptDefaultCompositeProfile>();
   //trajopt_composite_profile->collision_constraint_config.type=trajopt::CollisionEvaluatorType::CAST_CONTINUOUS;
   trajopt_composite_profile_b->collision_constraint_config.enabled = false;
   trajopt_composite_profile_b->collision_cost_config.safety_margin = 0.001;
   trajopt_composite_profile_b->collision_cost_config.coeff = 50;
-//  trajopt_composite_profile_b->constraint_error_functions = constraint_error_functions_b_;
+  trajopt_composite_profile_b->constraint_error_functions = constraint_error_functions_b_;
 
 
   auto trajopt_solver_profile_b = std::make_shared<tesseract_planning::TrajOptDefaultSolverProfile>();

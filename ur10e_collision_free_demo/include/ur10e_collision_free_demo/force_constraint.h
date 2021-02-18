@@ -23,6 +23,9 @@ TRAJOPT_IGNORE_WARNINGS_POP
 #include <trajopt_sco/modeling.hpp>
 #include <trajopt_sco/modeling_utils.hpp>
 
+#define DEGREE2RADIAN M_PI/180.0
+#define RADIAN2DEGREE  180.0/M_PI
+
 using Eigen::MatrixX2d;
 
 struct ForceConstraint : public trajopt::TrajOptVectorOfVector
@@ -35,6 +38,10 @@ struct ForceConstraint : public trajopt::TrajOptVectorOfVector
     void Plot(const tesseract_visualization::Visualization::Ptr& plotter, const Eigen::VectorXd& dof_vals) override;
 
     Eigen::VectorXd operator()(const Eigen::VectorXd& current_joints_pos) const override;
+
+    void set_robot_(bool robot_); // 0 : a 1: b
+
+    bool set_robot_type = false;
 };
 
 

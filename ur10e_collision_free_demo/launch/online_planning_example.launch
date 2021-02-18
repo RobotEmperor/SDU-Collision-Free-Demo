@@ -37,8 +37,8 @@
     <param name="file_write_cb" value="$(arg file_write_cb)" />
     <param name="rviz" type="bool" value="$(arg rviz)"/>
   </node>
-  <!-- Launch visualization
+  <!-- Launch visualization -->
   <node if="$(arg rviz)" pkg="rviz" type="rviz" name="online_planning_example_rviz"
-       args="-d $(find tesseract_ros_examples)/config/examples.rviz" /> -->
+       args="-d $(find tesseract_ros_examples)/config/examples.rviz" />
      
 </launch>
