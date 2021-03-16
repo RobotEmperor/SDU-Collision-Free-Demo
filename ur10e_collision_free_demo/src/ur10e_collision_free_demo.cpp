@@ -34,15 +34,15 @@ static const double LONGEST_VALID_SEGMENT_LENGTH = 0.005;
 namespace online_planning_test
 {
 TestExample::TestExample(const ros::NodeHandle& nh, bool plotting, bool rviz)
-                            : Example(plotting, rviz), nh_(nh)
-                              {
+                                    : Example(plotting, rviz), nh_(nh)
+                                      {
   // total waypoints
   waypoints_robot_a_.clear();
   waypoints_robot_b_.clear();
 
   waypoint_pose_a_.resize(6);
   waypoint_pose_b_.resize(6);
-                              }
+                                      }
 void TestExample::make_circle_waypoints(int direction_, double radious_)
 {
   double x_,y_;
@@ -69,7 +69,7 @@ void TestExample::make_circle_waypoints(int direction_, double radious_)
     {
       x_ = -radious_*sin(theta_*num + offset_);
       y_ = radious_*cos(theta_*num + offset_);
-      rotation_y_ = 20*DEGREE2RADIAN*num;
+      rotation_y_ = 10*DEGREE2RADIAN*num;
       rotation_z_ = 0*DEGREE2RADIAN*num;
       rotation_x_ = -15*DEGREE2RADIAN*num;
 
@@ -353,7 +353,6 @@ bool TestExample::run()
   PlanInstruction pick_plan_a3(temp_wp_3, PlanInstructionType::FREESPACE, "DEFAULT");
   pick_plan_a3.setDescription("pose_3");
 
-
   tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[4][0], waypoints_robot_a_[4][1], waypoints_robot_a_[4][2]), RPY<>(waypoints_robot_a_[4][3],waypoints_robot_a_[4][4],waypoints_robot_a_[4][5]).toRotation3D()); // RPY
   tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
 
@@ -407,7 +406,7 @@ bool TestExample::run()
   trajopt_composite_profile->collision_constraint_config.enabled = false;
   trajopt_composite_profile->collision_cost_config.safety_margin = 0.001;
   trajopt_composite_profile->collision_cost_config.coeff = 50;
-  trajopt_composite_profile->constraint_error_functions = constraint_error_functions_;
+  //trajopt_composite_profile->constraint_error_functions = constraint_error_functions_;
 
 
   auto trajopt_solver_profile = std::make_shared<tesseract_planning::TrajOptDefaultSolverProfile>();
@@ -434,6 +433,7 @@ bool TestExample::run()
 
   // Solve process plan
   ProcessPlanningFuture pick_response = planning_server.run(pick_request);
+
   planning_server.waitForAll();
 
   // Plot Process Trajectory

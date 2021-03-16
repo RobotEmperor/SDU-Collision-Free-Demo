@@ -38,7 +38,7 @@ VectorXd ForceConstraint::operator()(const VectorXd& current_joints_pos) const
     joint_names.push_back("a_wrist_2_joint");
     joint_names.push_back("a_wrist_3_joint");
 
-    std::string link = "a_final_link_2";
+    std::string link = "a_final_link_1";
     Eigen::Isometry3d current_pose = env_->getCurrentState()->link_transforms.at(link);
     Eigen::Isometry3d initial_pose_;
 
@@ -149,7 +149,7 @@ VectorXd ForceConstraint::operator()(const VectorXd& current_joints_pos) const
     joint_names_b.push_back("b_wrist_2_joint");
     joint_names_b.push_back("b_wrist_3_joint");
 
-    std::string link_b = "b_final_link_2";
+    std::string link_b = "b_final_link_1";
     Eigen::Isometry3d current_pose_b = env_->getCurrentState()->link_transforms.at(link_b);
     Eigen::Isometry3d initial_pose_b;
 
