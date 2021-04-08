@@ -71,7 +71,7 @@ void TestExample::make_circle_waypoints(int direction_, double radious_)
       y_ = radious_*cos(theta_*num + offset_);
       rotation_y_ = 10*DEGREE2RADIAN*num;
       rotation_z_ = 0*DEGREE2RADIAN*num;
-      rotation_x_ = -15*DEGREE2RADIAN*num;
+      rotation_x_ = -5*DEGREE2RADIAN*num;
 
       tf_small_pulley_to_circle_points_ = Transform3D<> (Vector3D<>(x_, y_, 0), RPY<>(rotation_z_,rotation_y_,rotation_x_).toRotation3D()); // RPY
       tf_big_pulley_to_circle_points_ = tf_big_pulley_to_small_pulley_*tf_small_pulley_to_circle_points_;
@@ -94,9 +94,9 @@ void TestExample::make_circle_waypoints(int direction_, double radious_)
     {
       x_ = radious_*sin(theta_*num + offset_);
       y_ = radious_*cos(theta_*num + offset_);
-      rotation_y_ = -20*DEGREE2RADIAN*num;
-      rotation_z_ = 0*DEGREE2RADIAN*num;
-      rotation_x_ = -15*DEGREE2RADIAN*num;
+      rotation_y_ = -25*DEGREE2RADIAN*num;
+      rotation_z_ = -5*DEGREE2RADIAN*num;
+      rotation_x_ = 0*DEGREE2RADIAN*num;
 
       tf_big_pulley_to_circle_points_ = Transform3D<> (Vector3D<>(x_, y_, -0.01), RPY<>(rotation_z_,rotation_y_,rotation_x_).toRotation3D()); // RPY
 
@@ -107,6 +107,8 @@ void TestExample::make_circle_waypoints(int direction_, double radious_)
       waypoint_pose_b_[3] = RPY<> (tf_big_pulley_to_circle_points_.R())[0];
       waypoint_pose_b_[4] = RPY<> (tf_big_pulley_to_circle_points_.R())[1];
       waypoint_pose_b_[5] = RPY<> (tf_big_pulley_to_circle_points_.R())[2];
+
+      std::cout << waypoint_pose_b_ << std::endl;
 
       waypoints_robot_b_.push_back(waypoint_pose_b_);
     }
@@ -252,14 +254,6 @@ bool TestExample::run()
   joint_names_b.push_back("b_wrist_1_joint");
   joint_names_b.push_back("b_wrist_2_joint");
   joint_names_b.push_back("b_wrist_3_joint");
-  //  joint_names.push_back("b_shoulder_pan_joint");
-  //  joint_names.push_back("b_shoulder_lift_joint");
-  //  joint_names.push_back("b_elbow_joint");
-  //  joint_names.push_back("b_wrist_1_joint");
-  //  joint_names.push_back("b_wrist_2_joint");
-  //  joint_names.push_back("b_wrist_3_joint");
-  //joint_names.push_back("a_robotiq_85_right_inner_knuckle_joint");
-  //joint_names.push_back("a_robotiq_85_right_finger_tip_joint");
 
   Eigen::VectorXd joint_pos_b(6);
   joint_pos_b(0) =  3.87083;
@@ -280,10 +274,6 @@ bool TestExample::run()
 
   pick_program.setStartInstruction(start_instruction);
 
-  //  Waypoint pick_swp_test = StateWaypoint(joint_names, joint_pos);
-  //  PlanInstruction stay_instruction(pick_swp_test, PlanInstructionType::FREESPACE, "DEFAULT");
-  //  stay_instruction.setDescription("pose_stay");
-
 
   //path planning
   // Define the approach pose
@@ -296,24 +286,6 @@ bool TestExample::run()
   tf_world_to_a_base_link_ = Transform3D<> (Vector3D<>(0, 0, 0.05), RPY<> (180*DEGREE2RADIAN,0,0).toRotation3D()); // RPY
   tf_a_base_link_to_big_pulley_ = Transform3D<> (Vector3D<>(-0.739757210413974, 0.07993900394775277, 0.2449995438351456), EAA<>(-0.7217029684216122, -1.7591780460014375, 1.7685571865188172).toRotation3D()); // RPY
 
-  //  for(int num = 0; num < 1; num ++)
-  //  {
-  //
-  //    tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[num][0], waypoints_robot_a_[num][1], waypoints_robot_a_[num][2]), RPY<>(waypoints_robot_a_[num][3],waypoints_robot_a_[num][4],waypoints_robot_a_[num][5]).toRotation3D()); // RPY
-  //    tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
-  //
-  //
-  //    temp_pose.linear() = Eigen::Quaterniond(Quaternion<> (tf_world_to_waypoints_.R())[3],Quaternion<> (tf_world_to_waypoints_.R())[0],Quaternion<> (tf_world_to_waypoints_.R())[1], Quaternion<> (tf_world_to_waypoints_.R())[2]).matrix();
-  //    temp_pose.translation() = Eigen::Vector3d(tf_world_to_waypoints_.P()[0], tf_world_to_waypoints_.P()[1], tf_world_to_waypoints_.P()[2]);  // rviz world
-  //
-  //    Waypoint temp_wp = CartesianWaypoint(temp_pose);
-  //
-  //    PlanInstruction pick_plan_a1(temp_wp, PlanInstructionType::FREESPACE, "DEFAULT");
-  //    pick_plan_a1.setDescription("pose_1");
-  //
-  //
-  //    pick_program.push_back(pick_plan_a1);
-  //  }
 
   tf_big_pulley_to_waypoints_ = Transform3D<> (Vector3D<>(waypoints_robot_a_[1][0], waypoints_robot_a_[1][1], waypoints_robot_a_[1][2]), RPY<>(waypoints_robot_a_[1][3],waypoints_robot_a_[1][4],waypoints_robot_a_[1][5]).toRotation3D()); // RPY
   tf_world_to_waypoints_ = tf_world_to_a_base_link_ * tf_a_base_link_to_big_pulley_*tf_big_pulley_to_waypoints_;
@@ -367,9 +339,9 @@ bool TestExample::run()
 
 
   pick_program.push_back(pick_plan_a0);
-  pick_program.push_back(pick_plan_a2);
-  pick_program.push_back(pick_plan_a3);
-  pick_program.push_back(pick_plan_a4);
+  //pick_program.push_back(pick_plan_a2);
+  //pick_program.push_back(pick_plan_a3);
+  //pick_program.push_back(pick_plan_a4);
 
 
   // Create Process Planning Server
@@ -380,6 +352,7 @@ bool TestExample::run()
   // Create TrajOpt Profile
   auto trajopt_plan_profile = std::make_shared<tesseract_planning::TrajOptDefaultPlanProfile>();
   trajopt_plan_profile->cartesian_coeff = Eigen::VectorXd::Constant(6, 1, 10);
+  //trajopt_plan_profile->
   //
   ForceConstraint f(env_);
   std::function<Eigen::VectorXd(const Eigen::VectorXd&)> temp_function = f;
@@ -406,7 +379,7 @@ bool TestExample::run()
   trajopt_composite_profile->collision_constraint_config.enabled = false;
   trajopt_composite_profile->collision_cost_config.safety_margin = 0.001;
   trajopt_composite_profile->collision_cost_config.coeff = 50;
-  //trajopt_composite_profile->constraint_error_functions = constraint_error_functions_;
+  trajopt_composite_profile->constraint_error_functions = constraint_error_functions_;
 
 
   auto trajopt_solver_profile = std::make_shared<tesseract_planning::TrajOptDefaultSolverProfile>();
@@ -465,9 +438,9 @@ bool TestExample::run()
   //Robot A
   //in relative to big pulley
   // close to the pulley
-  waypoint_pose_b_[0] = 0;
+  waypoint_pose_b_[0] = 0.07;
   waypoint_pose_b_[1] = 0;
-  waypoint_pose_b_[2] = -0.025;
+  waypoint_pose_b_[2] = -0.04;
   waypoint_pose_b_[3] = 0*DEGREE2RADIAN;
   waypoint_pose_b_[4] = -25*DEGREE2RADIAN;
   waypoint_pose_b_[5] = 0;
@@ -476,11 +449,11 @@ bool TestExample::run()
 
   // insert belt to pulley groove
 
-  waypoint_pose_b_[0] = 0.04;
+  waypoint_pose_b_[0] = 0.07;
   waypoint_pose_b_[1] = 0;
-  waypoint_pose_b_[2] = -0.02;
+  waypoint_pose_b_[2] = -0.04;
   waypoint_pose_b_[3] = 0*DEGREE2RADIAN;
-  waypoint_pose_b_[4] = 0;
+  waypoint_pose_b_[4] = -25*DEGREE2RADIAN;
   waypoint_pose_b_[5] = 0;
 
   waypoints_robot_b_.push_back(waypoint_pose_b_);

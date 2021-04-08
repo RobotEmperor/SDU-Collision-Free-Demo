@@ -40,7 +40,7 @@
     <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
     <!-- between fixture and robot_a 
     
-    <!-- between robot_a itself --> base_link
+    <!-- between robot_a itself --> 
     
     <disable_collisions link1="a_base_link" link2="a_shoulder_link" reason="Adjacent" />
     <disable_collisions link1="a_base_link" link2="a_upper_arm_link" reason="Never" />
@@ -58,7 +58,7 @@
     <disable_collisions link1="a_wrist_2_link" link2="a_pirat_hand_link" reason="Adjacent" />
     <disable_collisions link1="a_wrist_2_link" link2="a_pirat_hand_link" reason="Never" />
     
-    <disable_collisions link1="a_wrist_3_link" link2="a_pirat_hand_link" reason="Adjacent" />
+    <disable_collisions link1="a_wrist_3_link" link2="a_pirat_hand_link" reason="Never" />
     
     <disable_collisions link1="a_pirat_hand_link" link2="a_finger_link_1" reason="Adjacent" />
     <disable_collisions link1="a_pirat_hand_link" link2="a_finger_link_2" reason="Adjacent" />
@@ -73,13 +73,20 @@
     
     <disable_collisions link1="a_finger_tip_link_1" link2="a_finger_tip_link_2" reason="Never" />
     
+    <disable_collisions link1="a_wrist_3_link" link2="a_dummy_cylinder_link" reason="Adjacent" />
+    <disable_collisions link1="a_dummy_cylinder_link" link2="a_pirat_hand_link" reason="Adjacent" />
+    
+    <disable_collisions link1="a_wrist_3_link" link2="a_dummy_camera_link" reason="Never" />
+    <disable_collisions link1="a_dummy_cylinder_link" link2="a_dummy_camera_link" reason="Never" />
+    <disable_collisions link1="a_pirat_hand_link" link2="a_dummy_camera_link" reason="Never" />
+    
     <disable_collisions link1="box" link2="big_pulley" reason="Adjacent" />
     <disable_collisions link1="box" link2="small_pulley" reason="Adjacent" />
     <disable_collisions link1="box" link2="buttom_box" reason="Adjacent" />
     <disable_collisions link1="box" link2="center_pulley" reason="Adjacent" />
     
     
-        <!-- between robot_b itself --> base_link
+        <!-- between robot_b itself --> 
     
     <disable_collisions link1="b_base_link" link2="b_shoulder_link" reason="Adjacent" />
     <disable_collisions link1="b_base_link" link2="b_upper_arm_link" reason="Never" />
@@ -111,6 +118,13 @@
     <disable_collisions link1="b_finger_link_2" link2="b_finger_tip_link_2" reason="Adjacent" />
     
     <disable_collisions link1="b_finger_tip_link_1" link2="b_finger_tip_link_2" reason="Never" />
+    
+    <disable_collisions link1="b_wrist_3_link" link2="b_dummy_cylinder_link" reason="Adjacent" />
+    <disable_collisions link1="b_dummy_cylinder_link" link2="b_pirat_hand_link" reason="Adjacent" />
+    
+    <disable_collisions link1="b_wrist_3_link" link2="b_wrench_link" reason="Never" />
+    <disable_collisions link1="b_dummy_cylinder_link" link2="b_wrench_link" reason="Never" />
+    <disable_collisions link1="b_pirat_hand_link" link2="b_wrench_link" reason="Never" />
     
     <disable_collisions link1="box" link2="big_pulley" reason="Adjacent" />
     <disable_collisions link1="box" link2="small_pulley" reason="Adjacent" />

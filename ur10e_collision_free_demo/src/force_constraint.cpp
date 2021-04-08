@@ -97,7 +97,7 @@ VectorXd ForceConstraint::operator()(const VectorXd& current_joints_pos) const
 
     // constraint function
 
-    double spring_constant_k_ = 120;
+    double spring_constant_k_ = 300;
     double force_magnitude_ = 0;
     double desired_force_magnitude_ = 10;
     static Eigen::VectorXd violation(1);
@@ -105,11 +105,16 @@ VectorXd ForceConstraint::operator()(const VectorXd& current_joints_pos) const
 
     static std::vector<double> force_vector_;
 
+    //force_vector_.push_back(spring_constant_k_*(tf_small_to_init_ee.P()[0] -  tf_small_to_final_ee.P()[0]));
+    //force_vector_.push_back(spring_constant_k_*(tf_small_to_init_ee.P()[1] -  tf_small_to_final_ee.P()[1]));
+    //force_vector_.push_back(spring_constant_k_*(tf_small_to_init_ee.P()[2] -  tf_small_to_final_ee.P()[2]));
+
     force_vector_.push_back(spring_constant_k_*(tf_small_to_init_ee.P()[0] -  tf_small_to_final_ee.P()[0]));
     force_vector_.push_back(spring_constant_k_*(tf_small_to_init_ee.P()[1] -  tf_small_to_final_ee.P()[1]));
     force_vector_.push_back(spring_constant_k_*(tf_small_to_init_ee.P()[2] -  tf_small_to_final_ee.P()[2]));
 
-    force_magnitude_ = sqrt(pow(force_vector_[0],2) + pow(force_vector_[1],2) + pow(force_vector_[2],2));
+    //force_magnitude_ = sqrt(pow(force_vector_[0],2) + pow(force_vector_[1],2) + pow(force_vector_[2],2));
+    force_magnitude_ = sqrt(pow(force_vector_[0],2));
 
     force_vector_.clear();
 
@@ -210,9 +215,9 @@ VectorXd ForceConstraint::operator()(const VectorXd& current_joints_pos) const
 
     // constraint function
 
-    double spring_constant_k_ = 120;
+    double spring_constant_k_ = 300;
     double force_magnitude_ = 0;
-    double desired_force_magnitude_ = 10;
+    double desired_force_magnitude_ = 2;
     static Eigen::VectorXd violation(1);
     violation << 0;
 
@@ -222,7 +227,7 @@ VectorXd ForceConstraint::operator()(const VectorXd& current_joints_pos) const
     force_vector_.push_back(spring_constant_k_*(tf_big_to_init_ee.P()[1] -  tf_big_to_final_ee.P()[1]));
     force_vector_.push_back(spring_constant_k_*(tf_big_to_init_ee.P()[2] -  tf_big_to_final_ee.P()[2]));
 
-    force_magnitude_ = sqrt(pow(force_vector_[0],2) + pow(force_vector_[1],2) + pow(force_vector_[2],2));
+    force_magnitude_ = sqrt(pow(force_vector_[0],2));
 
     force_vector_.clear();
 
