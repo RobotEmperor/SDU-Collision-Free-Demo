@@ -28,12 +28,12 @@
     </group_state>
     
     <group_state name="initial_pose_b" group="ur10e_b">
-        <joint name="b_shoulder_pan_joint" value="3.87083" />
-        <joint name="b_shoulder_lift_joint" value="-2.28049" />
-        <joint name="b_elbow_joint" value="-1.3507" />
-        <joint name="b_wrist_1_joint" value="-2.64271" />
-        <joint name="b_wrist_2_joint" value="1.08987" />
-        <joint name="b_wrist_3_joint" value="3.12731" />
+        <joint name="b_shoulder_pan_joint" value="0" />
+        <joint name="b_shoulder_lift_joint" value="0" />
+        <joint name="b_elbow_joint" value="0" />
+        <joint name="b_wrist_1_joint" value="0" />
+        <joint name="b_wrist_2_joint" value="0" />
+        <joint name="b_wrist_3_joint" value="0" />
     </group_state>
     
 

@@ -22,20 +22,24 @@ TRAJOPT_IGNORE_WARNINGS_POP
 #include <trajopt/common.hpp>
 #include <trajopt_sco/modeling.hpp>
 #include <trajopt_sco/modeling_utils.hpp>
+#include <rw/math.hpp>
 
 #define DEGREE2RADIAN M_PI/180.0
 #define RADIAN2DEGREE  180.0/M_PI
 
 using Eigen::MatrixX2d;
 
+using namespace rw::math;
+using namespace util;
+using namespace Eigen;
+
 struct ForceConstraint : public trajopt::TrajOptVectorOfVector
 {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     tesseract_environment::Environment::Ptr env_;
-
     ForceConstraint(tesseract_environment::Environment::Ptr env_2):env_(env_2){}
-
     void Plot(const tesseract_visualization::Visualization::Ptr& plotter, const Eigen::VectorXd& dof_vals) override;
+    void init_var();
 
     Eigen::VectorXd operator()(const Eigen::VectorXd& current_joints_pos) const override;
 

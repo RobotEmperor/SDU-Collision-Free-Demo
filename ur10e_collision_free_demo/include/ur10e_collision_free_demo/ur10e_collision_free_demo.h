@@ -66,8 +66,8 @@ using namespace tesseract_scene_graph;
 using namespace tesseract_collision;
 using namespace tesseract_rosutils;
 using namespace tesseract_visualization;
-using namespace rw::math;
 using namespace util;
+using namespace Eigen;
 
 namespace online_planning_test
 {
