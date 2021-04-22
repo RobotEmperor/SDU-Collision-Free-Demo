@@ -17,14 +17,16 @@ VectorXd ForceConstraint::operator()(const VectorXd& current_joints_pos) const
   tesseract_kinematics::ForwardKinematics::Ptr kin_b;
 
   //set frame to parts frame
+
+  Transform3D<> tf_world_to_base_a;
+  Transform3D<> tf_world_to_base_b;
+
   Transform3D<> tf_base_a_to_init_ee;
   Transform3D<> tf_base_a_to_curr_ee;
 
   Transform3D<> tf_base_b_to_init_ee;
   Transform3D<> tf_base_b_to_curr_ee;
 
-  Transform3D<> tf_a_big_pulley;
-  Transform3D<> tf_b_big_pulley;
   Transform3D<> tf_a_b;
 
   Transform3D<> tf_big_to_a_curr_ee;
@@ -32,8 +34,6 @@ VectorXd ForceConstraint::operator()(const VectorXd& current_joints_pos) const
 
   Transform3D<> tf_big_to_rubber_belt;
 
-  Eigen::VectorXd joint_init_pos_a;
-  Eigen::VectorXd joint_init_pos_b;
 
   std::vector<std::string> joint_names_a;
   std::vector<std::string> joint_names_b;
@@ -49,31 +49,41 @@ VectorXd ForceConstraint::operator()(const VectorXd& current_joints_pos) const
 
   Eigen::Quaterniond pose_quaternion_q;
 
+  Eigen::VectorXd joint_init_pos_a;
+  Eigen::VectorXd joint_init_pos_b;
+
   //constraint
   double curr_force_magnitude = 0;
   double desired_force_magnitude = 10;
   double belt_offset = 0.12;
   double force_offset = 0;
 
-  //ref frame
-  tf_a_big_pulley=  Transform3D<> (Vector3D<>(-0.739757210413974, 0.07993900394775277, 0.2449995438351456), EAA<>(-0.7217029684216122, -1.7591780460014375, 1.7685571865188172).toRotation3D());
-  tf_b_big_pulley =  Transform3D<> (Vector3D<>(-0.6654834316385497, -0.0844570012960042, 0.2551901723057327), EAA<>(-1.484318068681165, 0.6191402790204206, -0.6254296057933952 ).toRotation3D());
+  tf_world_to_base_a = Transform3D<> (Vector3D<>(0, 0, 0.05), RPY<> (180*DEGREE2RADIAN,0,0).toRotation3D()); // RPY
+  tf_world_to_base_b = Transform3D<> (Vector3D<>(0, 0, 0.05), RPY<> (180*DEGREE2RADIAN,0,0).toRotation3D()); // RPY
 
   tf_a_b = tf_a_big_pulley * inverse(tf_b_big_pulley);
 
   tf_big_to_rubber_belt = Transform3D<> (Vector3D<>(-0.13-0.0175,0,0), EAA<>(0,0,0).toRotation3D());
 
-  //std::cout << "tf_a_b :: " << tf_a_b << std::endl;
-
   joint_init_pos_a.resize(6);
   joint_init_pos_b.resize(6);
 
-  joint_init_pos_a(0) = 2.97691;
-  joint_init_pos_a(1) = -1.65511;
-  joint_init_pos_a(2) = -2.33346;
-  joint_init_pos_a(3) = -2.28544;
-  joint_init_pos_a(4) = -2.52771;
-  joint_init_pos_a(5) = -3.13402;
+  joint_init_pos_a = temp_joint_init_pos_a;
+  joint_init_pos_b = temp_joint_init_pos_b;
+
+//  joint_init_pos_a(0) = 2.97691;
+//  joint_init_pos_a(1) = -1.65511;
+//  joint_init_pos_a(2) = -2.33346;
+//  joint_init_pos_a(3) = -2.28544;
+//  joint_init_pos_a(4) = -2.52771;
+//  joint_init_pos_a(5) = -3.13402;
+//
+//  joint_init_pos_b(0) =  3.86493;
+//  joint_init_pos_b(1) =  -2.32467;
+//  joint_init_pos_b(2) =  -1.28264;
+//  joint_init_pos_b(3) =  -2.67925;
+//  joint_init_pos_b(4) =  1.07453;
+//  joint_init_pos_b(5) =  3.13593;
 
   joint_names_a.push_back("a_shoulder_pan_joint");
   joint_names_a.push_back("a_shoulder_lift_joint");
@@ -81,13 +91,6 @@ VectorXd ForceConstraint::operator()(const VectorXd& current_joints_pos) const
   joint_names_a.push_back("a_wrist_1_joint");
   joint_names_a.push_back("a_wrist_2_joint");
   joint_names_a.push_back("a_wrist_3_joint");
-
-  joint_init_pos_b(0) =  3.86019;
-  joint_init_pos_b(1) =  -2.31443;
-  joint_init_pos_b(2) =  -1.28901;
-  joint_init_pos_b(3) =  -2.67455;
-  joint_init_pos_b(4) =  1.07796;
-  joint_init_pos_b(5) =  3.13539;
 
   joint_names_b.push_back("b_shoulder_pan_joint");
   joint_names_b.push_back("b_shoulder_lift_joint");
@@ -111,40 +114,18 @@ VectorXd ForceConstraint::operator()(const VectorXd& current_joints_pos) const
   current_pose_a = env_->getCurrentState()->link_transforms.at(final_ee_link_a);
   current_pose_b = env_->getCurrentState()->link_transforms.at(final_ee_link_b);
 
+  Transform3D<> initial_position_a_;
+  Transform3D<> initial_position_b_;
+
   if(!set_robot_type) // a
   {
-
-    //    initial_position_a_ = Transform3D<> (Vector3D<>(-0.13, 0, -0.04), RPY<> (0,0,0).toRotation3D()); // RPY
-    //    initial_position_a_ = tf_a_big_pulley * initial_position_a_ ;
-    //
-    //    initial_position_b_ = Transform3D<> (Vector3D<>(0.02, 0, -0.04), RPY<> (0,-25*DEGREE2RADIAN,0).toRotation3D()); // RPY
-    //    initial_position_b_ = tf_b_big_pulley * initial_position_b_ ;
-
-    //    std::cout << "A :: ---------------------------- " << std::endl;
-    //
-    //    std::cout << (initial_position_a_.P())[0] << std::endl;
-    //    std::cout << (initial_position_a_.P())[1] << std::endl;
-    //    std::cout << (initial_position_a_.P())[2] << std::endl;
-    //
-    //    std::cout << EAA<> (initial_position_a_.R())[0] << std::endl;
-    //    std::cout << EAA<> (initial_position_a_.R())[1] << std::endl;
-    //    std::cout << EAA<> (initial_position_a_.R())[2] << std::endl;
-    //
-    //    std::cout << "B :: ---------------------------- " << std::endl;
-    //
-    //    std::cout << (initial_position_b_.P())[0] << std::endl;
-    //    std::cout << (initial_position_b_.P())[1] << std::endl;
-    //    std::cout << (initial_position_b_.P())[2] << std::endl;
-    //
-    //    std::cout << EAA<> (initial_position_b_.R())[0] << std::endl;
-    //    std::cout << EAA<> (initial_position_b_.R())[1] << std::endl;
-    //    std::cout << EAA<> (initial_position_b_.R())[2] << std::endl;
-
     kin_a->calcFwdKin(current_pose_a, current_joints_pos);
-    kin_b->calcFwdKin(current_pose_b, joint_init_pos_b);
+    kin_b->calcFwdKin(initial_pose_b, joint_init_pos_b);
 
     pose_quaternion_q = (Eigen::Quaterniond)current_pose_a.linear();
     tf_base_a_to_curr_ee = Transform3D<> (Vector3D<>(current_pose_a.translation()(0), current_pose_a.translation()(1), current_pose_a.translation()(2)), rw::math::Quaternion<>(pose_quaternion_q.x(),pose_quaternion_q.y(),pose_quaternion_q.z(),pose_quaternion_q.w()).toRotation3D());// xyz w
+
+
 
     pose_quaternion_q = (Eigen::Quaterniond)initial_pose_b.linear();
     tf_base_b_to_init_ee = Transform3D<> (Vector3D<>(initial_pose_b.translation()(0), initial_pose_b.translation()(1), initial_pose_b.translation()(2)), rw::math::Quaternion<>(pose_quaternion_q.x(),pose_quaternion_q.y(),pose_quaternion_q.z(),pose_quaternion_q.w()).toRotation3D());// xyz w
@@ -152,15 +133,13 @@ VectorXd ForceConstraint::operator()(const VectorXd& current_joints_pos) const
     tf_big_to_a_curr_ee = inverse(tf_a_big_pulley) * tf_base_a_to_curr_ee;
     tf_big_to_b_curr_ee = inverse(tf_b_big_pulley) * tf_base_b_to_init_ee;
 
-    //std::cout << "tf_base_a_to_curr_ee ::  "<< tf_base_a_to_curr_ee.P()[0] << "  " << tf_base_a_to_curr_ee.P()[1] << "  " << tf_base_a_to_curr_ee.P()[2]<< std::endl;
-    //std::cout << "tf_base_b_to_curr_ee ::  "<< tf_base_b_to_curr_ee.P()[0] << "  " << tf_base_b_to_curr_ee.P()[1] << "  " << tf_base_b_to_curr_ee.P()[2]<< std::endl;
-
-    //std::cout << "tf_big_to_a_curr_ee ::  "<< tf_big_to_a_curr_ee << std::endl;
-    //std::cout << "tf_big_to_b_curr_ee ::  "<< tf_big_to_b_curr_ee << std::endl;
+    std::cout << "tf_base_a_to_curr_ee ::  "<< tf_base_a_to_curr_ee.P()[0] << "  " << tf_base_a_to_curr_ee.P()[1] << "  " << tf_base_a_to_curr_ee.P()[2]<< std::endl;
+    std::cout << "tf_base_b_to_init_ee ::  "<< tf_base_b_to_init_ee.P()[0] << "  " << tf_base_b_to_init_ee.P()[1] << "  " << tf_base_b_to_init_ee.P()[2]<< std::endl;
+ //
+ //    std::cout << "tf_big_to_a_curr_ee ::  "<< tf_big_to_a_curr_ee << std::endl;
+ //    std::cout << "tf_big_to_b_curr_ee ::  "<< tf_big_to_b_curr_ee << std::endl;
 
     violation << 0;
-
-
 
     //HC model
     curr_force_magnitude = 1.047208039306791 *100000000*pow((abs(tf_big_to_b_curr_ee.P()[0] - tf_big_to_a_curr_ee.P()[0]) - belt_offset), 5.9659451);
@@ -179,6 +158,8 @@ VectorXd ForceConstraint::operator()(const VectorXd& current_joints_pos) const
 
     pose_quaternion_q = (Eigen::Quaterniond)current_pose_b.linear();
     tf_base_b_to_curr_ee = Transform3D<> (Vector3D<>(current_pose_b.translation()(0), current_pose_b.translation()(1), current_pose_b.translation()(2)), rw::math::Quaternion<>(pose_quaternion_q.x(),pose_quaternion_q.y(),pose_quaternion_q.z(),pose_quaternion_q.w()).toRotation3D());// xyz w
+
+
 
     tf_big_to_b_curr_ee = inverse(tf_b_big_pulley) * tf_base_b_to_curr_ee;
 
@@ -200,6 +181,37 @@ VectorXd ForceConstraint::operator()(const VectorXd& current_joints_pos) const
 void ForceConstraint::set_robot_(bool robot_)// 0 : a 1: b
 {
   set_robot_type = robot_;
+}
+void ForceConstraint::set_data_(Eigen::VectorXd joint_a ,Eigen::VectorXd joint_b, Transform3D<> tf_a_ref, Transform3D<> tf_b_ref)
+{
+
+  temp_joint_init_pos_a = joint_a;
+  temp_joint_init_pos_b = joint_b;
+
+  tf_a_big_pulley = tf_a_ref;
+  tf_b_big_pulley = tf_b_ref;
+
+
+  std::cout <<" joint_init_pos_a :: "<< temp_joint_init_pos_a << std::endl;
+  std::cout <<" joint_init_pos_b :: "<< temp_joint_init_pos_b << std::endl;
+
+  std::cout << "tf_a_parts :: ---------------------------- " << std::endl;
+  std::cout << (tf_a_big_pulley.P())[0] << std::endl;
+  std::cout << (tf_a_big_pulley.P())[1] << std::endl;
+  std::cout << (tf_a_big_pulley.P())[2] << std::endl;
+
+  std::cout << EAA<> (tf_a_big_pulley.R())[0] << std::endl;
+  std::cout << EAA<> (tf_a_big_pulley.R())[1] << std::endl;
+  std::cout << EAA<> (tf_a_big_pulley.R())[2] << std::endl;
+
+  std::cout << "tf_b_parts :: ---------------------------- " << std::endl;
+  std::cout << (tf_b_big_pulley.P())[0] << std::endl;
+  std::cout << (tf_b_big_pulley.P())[1] << std::endl;
+  std::cout << (tf_b_big_pulley.P())[2] << std::endl;
+
+  std::cout << EAA<> (tf_b_big_pulley.R())[0] << std::endl;
+  std::cout << EAA<> (tf_b_big_pulley.R())[1] << std::endl;
+  std::cout << EAA<> (tf_b_big_pulley.R())[2] << std::endl;
 }
 
 void ForceConstraint::Plot(const tesseract_visualization::Visualization::Ptr& plotter, const VectorXd& dof_vals)

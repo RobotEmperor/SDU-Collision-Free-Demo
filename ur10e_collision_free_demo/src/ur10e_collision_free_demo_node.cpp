@@ -23,5 +23,6 @@ int main(int argc, char** argv)
   pnh.param("rviz", rviz, rviz);
 
   TestExample example(nh, plotting, rviz);
+  example.parsing_data("/home/yik/catkin_ws/src/SDU-Collision-Free-Demo/ur10e_collision_free_demo/config/parameters.yaml");
   example.run();
 }

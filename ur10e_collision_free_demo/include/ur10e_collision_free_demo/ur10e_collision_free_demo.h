@@ -18,6 +18,8 @@ TESSERACT_COMMON_IGNORE_WARNINGS_POP
 #include <ur10e_collision_free_demo/example.h>
 #include <ur10e_collision_free_demo/force_constraint.h>
 #include <rw/math.hpp>
+//yaml
+#include <yaml-cpp/yaml.h>
 
 #include <tesseract_rosutils/plotting.h>
 #include <tesseract_rosutils/utils.h>
@@ -86,6 +88,7 @@ class TestExample : public Example
     TestExample& operator=(TestExample&&) = default;
 
     void make_circle_waypoints(int direction_, double radious_);
+    void parsing_data(const std::string &path_);
     bool run() override;
 
   private:
@@ -95,6 +98,12 @@ class TestExample : public Example
 
     std::vector<double> waypoint_pose_a_;
     std::vector<double> waypoint_pose_b_;
+
+    Eigen::VectorXd joint_init_pos_a;
+    Eigen::VectorXd joint_init_pos_b;
+
+    rw::math::Transform3D<> tf_a_parts;
+    rw::math::Transform3D<> tf_b_parts;
 
 };
 

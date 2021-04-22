@@ -16,6 +16,9 @@ find_package(catkin REQUIRED COMPONENTS
 set(RW_ROOT "$ENV{RW_ROOT}")
 find_package(RobWork REQUIRED PATHS "${RW_ROOT}")
 
+find_package(PkgConfig)
+pkg_check_modules(yaml_cpp yaml-cpp REQUIRED)
+
 find_package(tesseract_environment REQUIRED)
 find_package(tesseract_command_language REQUIRED)
 find_package(tesseract_motion_planners REQUIRED)
@@ -46,7 +49,7 @@ target_include_directories(ur10e_collision_free_demo_node PRIVATE
     "$<INSTALL_INTERFACE:include>")
 target_include_directories(ur10e_collision_free_demo_node SYSTEM PRIVATE
     ${catkin_INCLUDE_DIRS} ${ROBWORK_INCLUDE_DIR})
-target_link_libraries(ur10e_collision_free_demo_node ur10e_collision_free_demo_lib ${catkin_LIBRARIES} ${ROBWORK_LIBRARIES})
+target_link_libraries(ur10e_collision_free_demo_node ur10e_collision_free_demo_lib ${catkin_LIBRARIES} ${ROBWORK_LIBRARIES} ${yaml_cpp_LIBRARIES})
 
 # Mark cpp header files for installation
 install(DIRECTORY include/${PROJECT_NAME}

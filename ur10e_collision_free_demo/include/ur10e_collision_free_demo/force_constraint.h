@@ -44,8 +44,15 @@ struct ForceConstraint : public trajopt::TrajOptVectorOfVector
     Eigen::VectorXd operator()(const Eigen::VectorXd& current_joints_pos) const override;
 
     void set_robot_(bool robot_); // 0 : a 1: b
+    void set_data_(Eigen::VectorXd joint_a ,Eigen::VectorXd joint_b, Transform3D<> tf_a_ref, Transform3D<> tf_b_ref);
 
     bool set_robot_type = false;
+
+    Transform3D<> tf_a_big_pulley;
+    Transform3D<> tf_b_big_pulley;
+
+    Eigen::VectorXd temp_joint_init_pos_a;
+    Eigen::VectorXd temp_joint_init_pos_b;
 };
 
 
